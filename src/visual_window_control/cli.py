@@ -144,7 +144,11 @@ def _error(msg: str) -> int:
 def cmd_list_windows(args: argparse.Namespace) -> int:
     ctrl = get_controller()
     windows = ctrl.list_windows()
-    print(json.dumps(windows, indent=2, ensure_ascii=False))
+    if args.json:
+        print(json.dumps(windows, indent=2, ensure_ascii=False))
+    else:
+        for w in windows:
+            print(f"{w['hwnd']}  {w['title']}")
     return 0
 
 
@@ -316,6 +320,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # list-windows
     p = sub.add_parser("list-windows", help="List all visible windows")
+    p.add_argument("--json", action="store_true", help="Output in JSON format")
     p.set_defaults(func=cmd_list_windows)
 
     # type

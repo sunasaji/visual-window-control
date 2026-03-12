@@ -7,8 +7,9 @@
 **Always start by identifying the target window and confirming with the user before proceeding.**
 
 ```bash
-# 1. List windows and show the user which ones are available
+# 1. List windows (plain text: "hwnd  title" per line)
 vwctl list-windows
+# or JSON: vwctl list-windows --json
 # → Ask the user: "Which window should I operate on?"
 
 # 2. Once confirmed, note the hwnd and use -H for all subsequent commands

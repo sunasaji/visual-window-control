@@ -15,7 +15,8 @@ with patch.dict("sys.modules", {
     "mss": MagicMock(),
     "pytesseract": MagicMock(),
 }):
-    from visual_window_control.cli import _resolve, _load_config, build_parser
+    import visual_window_control.cli as _cli_mod
+    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows
 
 
 # ── _resolve ──────────────────────────────────────────────────────────
@@ -96,6 +97,11 @@ class TestBuildParser:
     def test_list_windows(self, parser):
         args = parser.parse_args(["list-windows"])
         assert args.command == "list-windows"
+        assert args.json is False
+
+    def test_list_windows_json_flag(self, parser):
+        args = parser.parse_args(["list-windows", "--json"])
+        assert args.json is True
 
     def test_type_command(self, parser):
         args = parser.parse_args(["-w", "Test", "type", "hello{enter}"])
@@ -164,3 +170,48 @@ class TestBuildParser:
     def test_missing_command_fails(self, parser):
         with pytest.raises(SystemExit):
             parser.parse_args([])
+
+
+# ── cmd_list_windows ─────────────────────────────────────────────────
+
+
+_FAKE_WINDOWS = [
+    {"hwnd": 200864, "title": "Windows PowerShell"},
+    {"hwnd": 12345, "title": "Untitled - Notepad"},
+]
+
+
+class TestCmdListWindows:
+    def _make_args(self, *, json_flag: bool) -> "argparse.Namespace":
+        import argparse
+        return argparse.Namespace(json=json_flag)
+
+    def test_plain_output(self, capsys):
+        with patch.object(_cli_mod, "get_controller") as mock_gc:
+            mock_gc.return_value.list_windows.return_value = _FAKE_WINDOWS
+            rc = cmd_list_windows(self._make_args(json_flag=False))
+        assert rc == 0
+        out = capsys.readouterr().out
+        lines = out.splitlines()
+        assert len(lines) == 2
+        assert lines[0] == "200864  Windows PowerShell"
+        assert lines[1] == "12345  Untitled - Notepad"
+
+    def test_json_output(self, capsys):
+        with patch.object(_cli_mod, "get_controller") as mock_gc:
+            mock_gc.return_value.list_windows.return_value = _FAKE_WINDOWS
+            rc = cmd_list_windows(self._make_args(json_flag=True))
+        assert rc == 0
+        import json
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert len(data) == 2
+        assert data[0]["hwnd"] == 200864
+        assert data[1]["title"] == "Untitled - Notepad"
+
+    def test_plain_empty(self, capsys):
+        with patch.object(_cli_mod, "get_controller") as mock_gc:
+            mock_gc.return_value.list_windows.return_value = []
+            rc = cmd_list_windows(self._make_args(json_flag=False))
+        assert rc == 0
+        assert capsys.readouterr().out == ""
