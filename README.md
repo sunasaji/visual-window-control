@@ -51,6 +51,9 @@ vwctl -w "Remote Desktop" exec "ls -la" -W 2.0
 vwctl -w "Remote Desktop" capture
 # → Saved: 2026-03-07_22-24-00_vwctl.jpg (1920x1080)
 
+# Capture with custom JPEG quality 1-95 (default: 85)
+vwctl -w "Remote Desktop" capture -q 60
+
 # Capture with custom filename (use .png extension for PNG output)
 vwctl -w "Remote Desktop" capture -o screen.png
 
@@ -77,7 +80,7 @@ vwctl -w "Command Prompt" -n type "dir{enter}"
 | `move X Y [-r]` | Move mouse cursor (absolute or relative) |
 | `drag X1 Y1 X2 Y2` | Drag mouse from start to end position |
 | `scroll AMOUNT` | Scroll mouse wheel (+up, -down) |
-| `capture [-o FILE] [-b]` | Capture window to JPEG file or base64 stdout (`.png` extension for PNG) |
+| `capture [-o FILE] [-q Q] [-b]` | Capture window to JPEG file or base64 stdout (`.png` extension for PNG) |
 | `ocr [-b]` | Capture window and extract text via OCR |
 | `exec CMD [-W SEC]` | Type command, Enter, wait, then OCR output |
 
@@ -108,6 +111,7 @@ Example `vwctl.toml`:
 window = "Remote Desktop"
 ocr_cmd = "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 capture_log_dir = "./captures"
+jpeg_quality = 85
 no_focus = false
 ```
 
@@ -119,6 +123,7 @@ no_focus = false
 | `VWCTL_HWND` | Default target window handle |
 | `VWCTL_OCR_CMD` | Tesseract executable path |
 | `VWCTL_CAPTURE_LOG_DIR` | Default directory for capture output |
+| `VWCTL_JPEG_QUALITY` | JPEG quality 1-95 (default: 85) |
 | `VWCTL_NO_FOCUS` | Send input via PostMessage without stealing focus (`1`/`true`) |
 | `VWCTL_CONFIG` | Config file path |
 

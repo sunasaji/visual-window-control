@@ -203,6 +203,42 @@ class TestCallToolRouting:
         assert result[0].mimeType == "image/jpeg"
         assert len(result[0].data) > 0  # base64 data present
 
+    def test_get_screen_image_custom_quality(self):
+        from PIL import Image
+        ctrl, _ = _setup_mocks()
+        img = Image.new("RGB", (10, 10), color=(255, 0, 0))
+        ctrl.capture_window.return_value = img
+
+        # Capture the save call to verify quality
+        saved_kwargs = {}
+        original_save = img.save
+        def mock_save(buf, **kwargs):
+            saved_kwargs.update(kwargs)
+            original_save(buf, **kwargs)
+        img.save = mock_save
+
+        result = _run(server.call_tool("get_screen_image", {"quality": 50}))
+
+        assert result[0].type == "image"
+        assert saved_kwargs.get("quality") == 50
+
+    def test_get_screen_image_default_quality(self):
+        from PIL import Image
+        ctrl, _ = _setup_mocks()
+        img = Image.new("RGB", (10, 10), color=(255, 0, 0))
+        ctrl.capture_window.return_value = img
+
+        saved_kwargs = {}
+        original_save = img.save
+        def mock_save(buf, **kwargs):
+            saved_kwargs.update(kwargs)
+            original_save(buf, **kwargs)
+        img.save = mock_save
+
+        result = _run(server.call_tool("get_screen_image", {}))
+
+        assert saved_kwargs.get("quality") == 85
+
     def test_send_key_sequence(self):
         ctrl, _ = _setup_mocks()
         steps = [{"key": "a"}, {"key": "b", "modifiers": ["ctrl"]}]

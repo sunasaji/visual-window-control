@@ -123,6 +123,13 @@ def _get_capture_log_dir() -> str | None:
     return _resolve("capture_log_dir", None, "VWCTL_CAPTURE_LOG_DIR", config)
 
 
+def _get_jpeg_quality(args: argparse.Namespace) -> int:
+    config = get_config()
+    val = _resolve("jpeg_quality", getattr(args, "jpeg_quality", None),
+                   "VWCTL_JPEG_QUALITY", config, convert=int)
+    return int(val) if val is not None else 85
+
+
 def _is_no_focus(args: argparse.Namespace) -> bool:
     config = get_config()
     val = _resolve("no_focus", getattr(args, "no_focus", None), "VWCTL_NO_FOCUS", config)
@@ -297,9 +304,11 @@ def cmd_capture(args: argparse.Namespace) -> int:
     if image is None:
         return _error("Error: Could not capture window")
 
+    quality = _get_jpeg_quality(args)
+
     if args.base64:
         buf = io.BytesIO()
-        image.save(buf, format="JPEG", quality=85)
+        image.save(buf, format="JPEG", quality=quality)
         print(base64.standard_b64encode(buf.getvalue()).decode("ascii"))
     else:
         if args.output:
@@ -313,7 +322,7 @@ def cmd_capture(args: argparse.Namespace) -> int:
                 filename = os.path.join(capture_dir, filename)
             output = filename
         fmt = "PNG" if output.lower().endswith(".png") else "JPEG"
-        save_kwargs = {"quality": 85} if fmt == "JPEG" else {}
+        save_kwargs = {"quality": quality} if fmt == "JPEG" else {}
         image.save(output, format=fmt, **save_kwargs)
         print(f"Saved: {output} ({image.width}x{image.height})")
     return 0
@@ -435,6 +444,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("capture", help="Capture window to file or stdout")
     p.add_argument("-o", "--output", default=None, help="Output file (default: timestamp_vwctl.jpg; use .png extension for PNG)")
     p.add_argument("-e", "--base64", action="store_true", help="Output base64-encoded JPEG to stdout")
+    p.add_argument("-q", "--jpeg-quality", type=int, default=None,
+                   help="JPEG quality 1-95 (default: 85)")
     p.add_argument("-b", "--background", action="store_true",
                    help="Use PrintWindow API (works when occluded, but may produce black images for hardware-accelerated apps)")
     p.set_defaults(func=cmd_capture)

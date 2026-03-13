@@ -44,6 +44,7 @@ In the examples below, `HWND` is the window handle obtained from `list-windows`.
 vwctl -H HWND ocr              # OCR the entire window
 vwctl -H HWND ocr -b           # OCR without bringing window to foreground
 vwctl -H HWND capture          # Save screenshot to timestamped JPEG
+vwctl -H HWND capture -q 60   # JPEG quality 1-95 (default: 85)
 vwctl -H HWND capture -o F.png # Save as PNG
 vwctl -H HWND capture -b       # Background capture (no foreground switch)
 ```

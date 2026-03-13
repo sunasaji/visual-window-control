@@ -16,7 +16,7 @@ with patch.dict("sys.modules", {
     "pytesseract": MagicMock(),
 }):
     import visual_window_control.cli as _cli_mod
-    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows, cmd_type, cmd_keys
+    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows, cmd_type, cmd_keys, _get_jpeg_quality
     from visual_window_control.window_control import FocusLostError
 
 
@@ -87,6 +87,36 @@ class TestLoadConfig:
             assert config["window"] == "Test"
 
 
+# ── _get_jpeg_quality ─────────────────────────────────────────────────
+
+
+class TestGetJpegQuality:
+    def _make_args(self, jpeg_quality=None):
+        import argparse
+        return argparse.Namespace(jpeg_quality=jpeg_quality, config=None)
+
+    def test_default(self):
+        with patch.object(_cli_mod, "get_config", return_value={}):
+            assert _get_jpeg_quality(self._make_args()) == 85
+
+    def test_cli_arg(self):
+        with patch.object(_cli_mod, "get_config", return_value={}):
+            assert _get_jpeg_quality(self._make_args(jpeg_quality=60)) == 60
+
+    def test_env_var(self):
+        with patch.object(_cli_mod, "get_config", return_value={}), \
+             patch.dict(os.environ, {"VWCTL_JPEG_QUALITY": "70"}):
+            assert _get_jpeg_quality(self._make_args()) == 70
+
+    def test_config_file(self):
+        with patch.object(_cli_mod, "get_config", return_value={"jpeg_quality": 50}):
+            assert _get_jpeg_quality(self._make_args()) == 50
+
+    def test_cli_overrides_config(self):
+        with patch.object(_cli_mod, "get_config", return_value={"jpeg_quality": 50}):
+            assert _get_jpeg_quality(self._make_args(jpeg_quality=90)) == 90
+
+
 # ── build_parser ──────────────────────────────────────────────────────
 
 
@@ -133,6 +163,14 @@ class TestBuildParser:
         assert args.output is None
         assert args.base64 is False
         assert args.background is False
+
+    def test_capture_jpeg_quality(self, parser):
+        args = parser.parse_args(["-w", "Test", "capture", "-q", "60"])
+        assert args.jpeg_quality == 60
+
+    def test_capture_jpeg_quality_default(self, parser):
+        args = parser.parse_args(["-w", "Test", "capture"])
+        assert args.jpeg_quality is None
 
     def test_capture_background(self, parser):
         args = parser.parse_args(["-w", "Test", "capture", "-b"])

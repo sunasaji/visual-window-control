@@ -115,6 +115,10 @@ async def list_tools() -> list[Tool]:
                         "type": "boolean",
                         "description": "If true, capture using PrintWindow API (works even when occluded, but may produce black images for hardware-accelerated apps). Default: false (brings window to foreground).",
                     },
+                    "quality": {
+                        "type": "integer",
+                        "description": "JPEG quality 1-95. Default: 85.",
+                    },
                 },
                 "required": [],
             },
@@ -364,13 +368,14 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent | 
         elif name == "get_screen_image":
             region = arguments.get("region")
             background = arguments.get("background", False)
+            quality = arguments.get("quality", 85)
             image = ctrl.capture_window(region, background=background)
             if image is None:
                 return [TextContent(type="text", text="Error: Could not capture window. Is target window set?")]
 
             # Convert to base64 JPEG
             buffer = io.BytesIO()
-            image.save(buffer, format="JPEG", quality=85)
+            image.save(buffer, format="JPEG", quality=quality)
             b64_image = base64.standard_b64encode(buffer.getvalue()).decode("utf-8")
 
             return [ImageContent(
