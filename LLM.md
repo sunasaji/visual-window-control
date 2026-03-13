@@ -56,6 +56,10 @@ vwctl -H HWND type "ls -la{enter}"
 vwctl -H HWND type "cd /tmp{enter}"
 vwctl -H HWND type "{ctrl+c}"
 
+# Type from stdin (pipe or streaming)
+echo "ls -la{enter}" | vwctl -H HWND type
+cat commands.txt | vwctl -H HWND type -r
+
 # Raw mode: no tag parsing, \n becomes Enter
 vwctl -H HWND type -r "line1
 line2
@@ -149,6 +153,7 @@ vwctl -H HWND ocr -b
 ## Constraints
 
 - **Focus stealing**: Most commands bring the target window to the foreground. This is unavoidable for remote desktop apps.
+- **Focus loss detection**: During `type`, `keys`, `send_keys`, and `send_key_sequence`, if the target window loses foreground focus, input is immediately aborted with a message indicating progress (e.g. `"typed 42 characters"` or `"sent 2/5 key steps"`). This prevents keystrokes from being sent to an unintended window. Disabled in no-focus mode (`-n` for CLI, `no_focus: true` for MCP).
 - **Admin privileges**: If the target runs as admin, `vwctl` must also run as admin.
 - **OCR accuracy**: Best with monospace fonts at 24pt+, high-contrast themes, and larger windows.
 - **Background capture** (`-b`): Uses PrintWindow API. May produce black images for hardware-accelerated apps (DirectX, OpenGL, some Electron apps).

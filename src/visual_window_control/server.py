@@ -16,7 +16,7 @@ from mcp.types import (
 )
 
 from .ocr import TerminalOCR
-from .window_control import WindowController
+from .window_control import FocusLostError, WindowController
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -383,7 +383,13 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent | 
             text = arguments["text"]
             raw = arguments.get("raw", False)
             no_focus = arguments.get("no_focus", False)
-            ctrl.send_keys(text, raw=raw, no_focus=no_focus)
+            try:
+                ctrl.send_keys(text, raw=raw, no_focus=no_focus,
+                               check_focus=not no_focus)
+            except FocusLostError as e:
+                return [TextContent(type="text",
+                    text=f"Aborted: target window lost focus "
+                         f"(sent {e.chars_sent}/{len(text)} characters)")]
             return [TextContent(type="text", text=f"Sent: {text}")]
 
         elif name == "send_special_key":
@@ -397,7 +403,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent | 
 
         elif name == "send_key_sequence":
             steps = arguments["steps"]
-            ctrl.send_key_sequence(steps)
+            try:
+                ctrl.send_key_sequence(steps, check_focus=True)
+            except FocusLostError as e:
+                return [TextContent(type="text",
+                    text=f"Aborted: target window lost focus "
+                         f"(sent {e.chars_sent}/{len(steps)} key steps)")]
             return [TextContent(type="text", text="Sent key sequence")]
 
         elif name == "list_child_windows":

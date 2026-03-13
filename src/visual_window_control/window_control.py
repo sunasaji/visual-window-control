@@ -13,6 +13,14 @@ from pynput.mouse import Button, Controller as MouseController
 
 logger = logging.getLogger(__name__)
 
+
+class FocusLostError(Exception):
+    """Raised when the target window loses foreground focus during input."""
+
+    def __init__(self, chars_sent: int = 0):
+        self.chars_sent = chars_sent
+        super().__init__(f"Target window lost focus after {chars_sent} characters")
+
 # Windows API constants
 SW_RESTORE = 9
 SW_SHOW = 5
@@ -800,7 +808,16 @@ class WindowController:
         # Use a shorter default delay for inline tags (100ms vs 600ms)
         self.send_special_key(key_part, modifiers, delay_ms=100, no_focus=no_focus)
 
-    def send_keys(self, text: str, raw: bool = False, no_focus: bool = False) -> None:
+    def _check_focus(self, chars_sent: int) -> None:
+        """Raise FocusLostError if target window is no longer in the foreground."""
+        fg = user32.GetForegroundWindow()
+        if fg != self.target_hwnd:
+            raise FocusLostError(chars_sent)
+
+    def send_keys(
+        self, text: str, raw: bool = False, no_focus: bool = False,
+        check_focus: bool = False,
+    ) -> None:
         """Send text input to target window.
 
         Supports inline tags: {enter}, {tab}, {ctrl+c}, {shift+a}, etc.
@@ -820,6 +837,8 @@ class WindowController:
             no_focus: If True, use PostMessage (no focus steal). Works with
                       cmd.exe, Git Bash, PuTTY, etc. May not work with RDP
                       or browser-based apps.
+            check_focus: If True, raise FocusLostError when the target window
+                         loses foreground focus during input.
         """
         if no_focus:
             hwnd = self._get_message_target()
@@ -850,23 +869,33 @@ class WindowController:
 
         time.sleep(0.1)  # Brief pause after focus
 
+        chars_sent = 0
+
         if raw:
             # Raw mode: no tag parsing, newlines → Enter
             segments = text.split('\n')
             for idx, segment in enumerate(segments):
+                if check_focus:
+                    self._check_focus(chars_sent)
                 if segment:
                     self.keyboard.type(segment)
+                    chars_sent += len(segment)
                     time.sleep(0.02)
                 if idx < len(segments) - 1:
                     self.send_special_key("enter", [], delay_ms=100)
+                    chars_sent += 1
             return
 
         tokens = self._tokenize(text)
         for token in tokens:
+            if check_focus:
+                self._check_focus(chars_sent)
             if token.startswith('\x01'):
                 self._send_tag(token[1:])
+                chars_sent += 1
             else:
                 self.keyboard.type(token)
+                chars_sent += len(token)
                 time.sleep(0.02)  # Small delay between characters
 
     def send_special_key(
@@ -952,15 +981,26 @@ class WindowController:
             delay_ms = 600
         time.sleep(delay_ms / 1000)
 
-    def send_key_sequence(self, steps: list[dict]) -> None:
-        """Send a sequence of key steps with optional per-step delays."""
+    def send_key_sequence(
+        self, steps: list[dict], check_focus: bool = False,
+    ) -> None:
+        """Send a sequence of key steps with optional per-step delays.
+
+        Args:
+            steps: List of dicts with key, optional modifiers, optional delay_ms
+            check_focus: If True, raise FocusLostError when focus is lost
+        """
+        sent = 0
         for step in steps:
             key = step.get("key")
             if not key:
                 continue
+            if check_focus:
+                self._check_focus(sent)
             modifiers = step.get("modifiers")
             delay_ms = step.get("delay_ms")
             self.send_special_key(key, modifiers, delay_ms)
+            sent += 1
 
     def click(
         self,

@@ -11,7 +11,7 @@ with patch.dict("sys.modules", {
     "pynput.mouse": MagicMock(),
     "mss": MagicMock(),
 }):
-    from visual_window_control.window_control import WindowController
+    from visual_window_control.window_control import FocusLostError, WindowController
 
 
 def _make_ctrl(**overrides):
@@ -263,3 +263,76 @@ class TestSetTargetWindow:
         ])
         ctrl.set_target_window("Test App")
         ctrl._find_deepest_child.assert_called_once_with(444)
+
+
+# ── FocusLostError ──────────────────────────────────────────────────
+
+
+class TestFocusLostError:
+    def test_stores_chars_sent(self):
+        err = FocusLostError(42)
+        assert err.chars_sent == 42
+        assert "42" in str(err)
+
+    def test_default_chars_sent(self):
+        err = FocusLostError()
+        assert err.chars_sent == 0
+
+
+# ── check_focus in send_keys ────────────────────────────────────────
+
+
+class TestSendKeysCheckFocus:
+    def test_check_focus_raises_on_focus_loss(self):
+        """send_keys with check_focus=True raises FocusLostError when focus is lost."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+
+        # Simulate focus loss: _check_focus raises on second token
+        call_count = 0
+        def fake_check_focus(chars_sent):
+            nonlocal call_count
+            call_count += 1
+            if call_count >= 2:
+                raise FocusLostError(chars_sent)
+        ctrl._check_focus = fake_check_focus
+
+        with pytest.raises(FocusLostError) as exc_info:
+            ctrl.send_keys("abcdef", check_focus=True)
+        # First token 'a' was sent before second check
+        assert exc_info.value.chars_sent == 1
+
+    def test_check_focus_false_does_not_check(self):
+        """send_keys with check_focus=False never calls _check_focus."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+        ctrl._check_focus = MagicMock(side_effect=AssertionError("should not be called"))
+
+        # Should not raise
+        ctrl.send_keys("hi")
+
+    def test_check_focus_not_used_in_no_focus_mode(self):
+        """No-focus mode ignores check_focus."""
+        ctrl = _make_ctrl(target_child_hwnd=99999)
+        ctrl._check_focus = MagicMock(side_effect=AssertionError("should not be called"))
+        ctrl._post_message_text = MagicMock()
+
+        ctrl.send_keys("hi", no_focus=True, check_focus=True)
+        ctrl._check_focus.assert_not_called()
+
+    def test_check_focus_raw_mode(self):
+        """Raw mode with check_focus raises on focus loss."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+        ctrl.send_special_key = MagicMock()
+
+        call_count = 0
+        def fake_check_focus(chars_sent):
+            nonlocal call_count
+            call_count += 1
+            if call_count >= 2:
+                raise FocusLostError(chars_sent)
+        ctrl._check_focus = fake_check_focus
+
+        with pytest.raises(FocusLostError):
+            ctrl.send_keys("line1\nline2\nline3", raw=True, check_focus=True)

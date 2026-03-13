@@ -32,8 +32,14 @@ vwctl -w "Remote Desktop" ocr
 # Type text with inline tags
 vwctl -w "Remote Desktop" type "ls -la{enter}"
 
+# Type from stdin (pipe or streaming)
+echo "ls -la{enter}" | vwctl -w "Remote Desktop" type
+
 # Send a special key with modifiers
 vwctl -w "Remote Desktop" key c -m ctrl
+
+# Send a key sequence with per-step timing control
+vwctl -w "Remote Desktop" keys '[{"key":"tab"},{"key":"enter","delay_ms":500}]'
 
 # Click at coordinates relative to window
 vwctl -w "Remote Desktop" click 400 300
@@ -64,9 +70,9 @@ vwctl -w "Command Prompt" -n type "dir{enter}"
 | Command | Description |
 |---------|-------------|
 | `list-windows` | List all visible windows with hwnd and title |
-| `type TEXT` | Type text with inline `{tag}` support |
+| `type [TEXT]` | Type text with inline `{tag}` support (reads from stdin if omitted) |
 | `key KEY [-m MOD]` | Send a single key press with optional modifiers |
-| `keys JSON` | Send a key sequence from JSON array |
+| `keys JSON` | Send a key sequence from JSON array (per-step modifiers and delays) |
 | `click X Y [-b]` | Click at position relative to window |
 | `move X Y [-r]` | Move mouse cursor (absolute or relative) |
 | `drag X1 Y1 X2 Y2` | Drag mouse from start to end position |
@@ -133,6 +139,8 @@ Add to your MCP client configuration (e.g. `.claude.json`):
 
 The MCP server exposes the same functionality as the CLI as tools: `list_windows`, `set_target_window`, `get_screen_text`, `get_screen_image`, `send_keys`, `send_special_key`, `send_key_sequence`, `click`, `mouse_move`, `mouse_drag`, `mouse_scroll`, `execute_and_read`, `list_child_windows`, `get_focus_info`.
 
+`send_keys` and `send_key_sequence` automatically detect focus loss: if the target window loses foreground focus during input, the operation is aborted and the tool returns an `"Aborted: target window lost focus (sent X/Y ...)"` message instead of the normal result.
+
 ## Inline Tags (`send_keys` / `type`)
 
 Text input supports `{tag}` syntax for special keys:
@@ -164,6 +172,37 @@ echo world
 
 # MCP: {"text": "echo hello\necho world\n", "raw": true}
 ```
+
+### Stdin Input
+
+When the text argument is omitted, `type` reads from stdin line by line. This enables piping and streaming:
+
+```bash
+# Pipe from another command
+echo "ls -la{enter}" | vwctl -w "Remote Desktop" type
+
+# Pipe file contents
+cat commands.txt | vwctl -w "Remote Desktop" type -r
+
+# Streaming (line-by-line as data arrives)
+tail -f commands.fifo | vwctl -w "Remote Desktop" type -r
+```
+
+Providing both a text argument and stdin is an error.
+
+### Focus Loss Detection
+
+The `type` and `keys` commands (and MCP `send_keys` / `send_key_sequence` tools) monitor whether the target window remains in the foreground during input. If another window takes focus, input is immediately aborted:
+
+```
+# type command
+Aborted: target window lost focus (typed 42 characters)
+
+# keys command
+Aborted: target window lost focus (sent 2/5 key steps)
+```
+
+This prevents keystrokes from being sent to an unintended window. Focus checking is disabled in no-focus mode (`-n` for CLI, `no_focus: true` for MCP).
 
 ## Limitations
 

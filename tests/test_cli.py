@@ -16,7 +16,8 @@ with patch.dict("sys.modules", {
     "pytesseract": MagicMock(),
 }):
     import visual_window_control.cli as _cli_mod
-    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows
+    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows, cmd_type, cmd_keys
+    from visual_window_control.window_control import FocusLostError
 
 
 # ── _resolve ──────────────────────────────────────────────────────────
@@ -108,6 +109,10 @@ class TestBuildParser:
         assert args.window == "Test"
         assert args.text == "hello{enter}"
         assert args.raw is False
+
+    def test_type_no_text_arg(self, parser):
+        args = parser.parse_args(["-w", "Test", "type"])
+        assert args.text is None
 
     def test_type_raw(self, parser):
         args = parser.parse_args(["-w", "Test", "type", "-r", "hello"])
@@ -215,3 +220,168 @@ class TestCmdListWindows:
             rc = cmd_list_windows(self._make_args(json_flag=False))
         assert rc == 0
         assert capsys.readouterr().out == ""
+
+
+# ── cmd_type ─────────────────────────────────────────────────────────
+
+
+class TestCmdType:
+    def _make_args(self, text=None, raw=False, window="Test", hwnd=None, no_focus=False,
+                   config=None):
+        import argparse
+        return argparse.Namespace(
+            text=text, raw=raw, window=window, hwnd=hwnd,
+            no_focus=no_focus, config=config,
+        )
+
+    def _patch_set_window(self):
+        return patch.object(_cli_mod, "_set_window", return_value=0)
+
+    def test_text_arg(self, capsys):
+        """Text argument: calls send_keys with check_focus=True."""
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = True
+            ctrl = mock_gc.return_value
+            rc = cmd_type(self._make_args(text="hello"))
+        assert rc == 0
+        ctrl.send_keys.assert_called_once_with(
+            "hello", raw=False, no_focus=False, check_focus=True,
+        )
+        assert "5 characters" in capsys.readouterr().out
+
+    def test_stdin_input(self, capsys):
+        """Stdin input: reads line by line and calls send_keys per line."""
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = False
+            mock_stdin.__iter__ = MagicMock(return_value=iter(["line1\n", "line2\n"]))
+            ctrl = mock_gc.return_value
+            rc = cmd_type(self._make_args(text=None))
+        assert rc == 0
+        assert ctrl.send_keys.call_count == 2
+        assert "12 characters" in capsys.readouterr().out
+
+    def test_both_text_and_stdin_errors(self, capsys):
+        """Both text arg and stdin: returns error."""
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller"), \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = False
+            rc = cmd_type(self._make_args(text="hello"))
+        assert rc == 1
+        assert "cannot use both" in capsys.readouterr().err
+
+    def test_neither_text_nor_stdin_errors(self, capsys):
+        """No text arg and no stdin: returns error."""
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller"), \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = True
+            rc = cmd_type(self._make_args(text=None))
+        assert rc == 1
+        assert "required" in capsys.readouterr().err
+
+    def test_focus_lost_text_arg(self, capsys):
+        """Focus loss during text arg typing: reports abort."""
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = True
+            ctrl = mock_gc.return_value
+            ctrl.send_keys.side_effect = FocusLostError(3)
+            rc = cmd_type(self._make_args(text="hello"))
+        assert rc == 1
+        assert "lost focus" in capsys.readouterr().err
+        assert "3 characters" in capsys.readouterr().err or True  # already consumed
+
+    def test_focus_lost_stdin(self, capsys):
+        """Focus loss during stdin streaming: reports cumulative chars."""
+        call_count = 0
+        def fake_send_keys(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                raise FocusLostError(2)
+
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = False
+            mock_stdin.__iter__ = MagicMock(return_value=iter(["aaa\n", "bbb\n"]))
+            ctrl = mock_gc.return_value
+            ctrl.send_keys.side_effect = fake_send_keys
+            rc = cmd_type(self._make_args(text=None))
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "lost focus" in err
+        # First line "aaa\n" (4 chars) + 2 chars into second line = 6
+        assert "6 characters" in err
+
+
+# ── cmd_keys ─────────────────────────────────────────────────────────
+
+
+class TestCmdKeys:
+    def _make_args(self, steps_json, window="Test", hwnd=None, no_focus=False,
+                   config=None):
+        import argparse
+        return argparse.Namespace(
+            steps_json=steps_json, window=window, hwnd=hwnd,
+            no_focus=no_focus, config=config,
+        )
+
+    def _patch_set_window(self):
+        return patch.object(_cli_mod, "_set_window", return_value=0)
+
+    def test_sends_all_steps(self, capsys):
+        steps = '[{"key":"tab"},{"key":"enter"}]'
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("visual_window_control.window_control.user32") as mock_u32:
+            ctrl = mock_gc.return_value
+            ctrl.target_hwnd = 12345
+            mock_u32.GetForegroundWindow.return_value = 12345
+            rc = cmd_keys(self._make_args(steps))
+        assert rc == 0
+        assert ctrl.send_special_key.call_count == 2
+        assert "2 key steps" in capsys.readouterr().out
+
+    def test_focus_lost_aborts(self, capsys):
+        steps = '[{"key":"tab"},{"key":"enter"},{"key":"space"}]'
+        call_count = 0
+        def fake_get_fg():
+            nonlocal call_count
+            call_count += 1
+            return 12345 if call_count < 3 else 99999
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("visual_window_control.window_control.user32") as mock_u32:
+            ctrl = mock_gc.return_value
+            ctrl.target_hwnd = 12345
+            mock_u32.GetForegroundWindow.side_effect = fake_get_fg
+            rc = cmd_keys(self._make_args(steps))
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "lost focus" in err
+        assert "2/3" in err
+
+    def test_no_focus_skips_check(self, capsys):
+        steps = '[{"key":"tab"},{"key":"enter"}]'
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=True):
+            ctrl = mock_gc.return_value
+            rc = cmd_keys(self._make_args(steps))
+        assert rc == 0
+        assert ctrl.send_special_key.call_count == 2

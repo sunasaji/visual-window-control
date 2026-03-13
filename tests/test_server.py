@@ -4,6 +4,8 @@ import asyncio
 import json
 from unittest.mock import patch, MagicMock, AsyncMock
 
+from visual_window_control.window_control import FocusLostError
+
 import pytest
 
 # Mock Windows-only and heavy modules before importing server
@@ -69,7 +71,7 @@ class TestCallToolRouting:
 
         result = _run(server.call_tool("send_keys", {"text": "hello"}))
 
-        ctrl.send_keys.assert_called_once_with("hello", raw=False, no_focus=False)
+        ctrl.send_keys.assert_called_once_with("hello", raw=False, no_focus=False, check_focus=True)
         assert "hello" in result[0].text
 
     def test_send_keys_raw(self):
@@ -77,14 +79,14 @@ class TestCallToolRouting:
 
         _run(server.call_tool("send_keys", {"text": "cmd\n", "raw": True}))
 
-        ctrl.send_keys.assert_called_once_with("cmd\n", raw=True, no_focus=False)
+        ctrl.send_keys.assert_called_once_with("cmd\n", raw=True, no_focus=False, check_focus=True)
 
     def test_send_keys_no_focus(self):
         ctrl, _ = _setup_mocks()
 
         _run(server.call_tool("send_keys", {"text": "x", "no_focus": True}))
 
-        ctrl.send_keys.assert_called_once_with("x", raw=False, no_focus=True)
+        ctrl.send_keys.assert_called_once_with("x", raw=False, no_focus=True, check_focus=False)
 
     def test_send_special_key(self):
         ctrl, _ = _setup_mocks()
@@ -207,7 +209,28 @@ class TestCallToolRouting:
 
         result = _run(server.call_tool("send_key_sequence", {"steps": steps}))
 
-        ctrl.send_key_sequence.assert_called_once_with(steps)
+        ctrl.send_key_sequence.assert_called_once_with(steps, check_focus=True)
+
+    def test_send_keys_focus_lost(self):
+        ctrl, _ = _setup_mocks()
+        ctrl.send_keys.side_effect = FocusLostError(3)
+
+        result = _run(server.call_tool("send_keys", {"text": "hello"}))
+
+        assert "Aborted" in result[0].text
+        assert "lost focus" in result[0].text
+        assert "3/5" in result[0].text
+
+    def test_send_key_sequence_focus_lost(self):
+        ctrl, _ = _setup_mocks()
+        steps = [{"key": "a"}, {"key": "b"}, {"key": "c"}]
+        ctrl.send_key_sequence.side_effect = FocusLostError(1)
+
+        result = _run(server.call_tool("send_key_sequence", {"steps": steps}))
+
+        assert "Aborted" in result[0].text
+        assert "lost focus" in result[0].text
+        assert "1/3" in result[0].text
 
     def test_unknown_tool(self):
         _setup_mocks()

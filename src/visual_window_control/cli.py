@@ -18,7 +18,7 @@ if sys.platform == "win32":
         sys.stderr.reconfigure(encoding="utf-8")
 
 from .ocr import TerminalOCR
-from .window_control import WindowController
+from .window_control import FocusLostError, WindowController
 
 _controller: WindowController | None = None
 _ocr: TerminalOCR | None = None
@@ -155,10 +155,57 @@ def cmd_list_windows(args: argparse.Namespace) -> int:
 def cmd_type(args: argparse.Namespace) -> int:
     if rc := _set_window(args):
         return rc
+
+    has_text_arg = args.text is not None
+    has_stdin = not sys.stdin.isatty()
+
+    if has_text_arg and has_stdin:
+        print("Error: cannot use both text argument and stdin", file=sys.stderr)
+        return 1
+
     ctrl = get_controller()
-    ctrl.send_keys(args.text, raw=args.raw, no_focus=_is_no_focus(args))
-    print(f"Typed {len(args.text)} characters")
-    return 0
+    no_focus = _is_no_focus(args)
+    check_focus = not no_focus
+
+    try:
+        if has_text_arg:
+            ctrl.send_keys(
+                args.text, raw=args.raw, no_focus=no_focus,
+                check_focus=check_focus,
+            )
+            print(f"Typed {len(args.text)} characters")
+            return 0
+
+        if has_stdin:
+            total_chars = 0
+            try:
+                for line in sys.stdin:
+                    ctrl.send_keys(
+                        line, raw=args.raw, no_focus=no_focus,
+                        check_focus=check_focus,
+                    )
+                    total_chars += len(line)
+            except FocusLostError as e:
+                print(
+                    f"\nAborted: target window lost focus "
+                    f"(typed {total_chars + e.chars_sent} characters)",
+                    file=sys.stderr,
+                )
+                return 1
+
+            print(f"Typed {total_chars} characters")
+            return 0
+
+    except FocusLostError as e:
+        print(
+            f"\nAborted: target window lost focus "
+            f"(typed {e.chars_sent} characters)",
+            file=sys.stderr,
+        )
+        return 1
+
+    print("Error: text argument or stdin is required", file=sys.stderr)
+    return 1
 
 
 def cmd_key(args: argparse.Namespace) -> int:
@@ -178,14 +225,27 @@ def cmd_keys(args: argparse.Namespace) -> int:
     ctrl = get_controller()
     steps = json.loads(args.steps_json)
     no_focus = _is_no_focus(args)
+    check_focus = not no_focus
+    sent = 0
     for step in steps:
         key = step.get("key")
         if not key:
             continue
+        if check_focus:
+            from .window_control import user32
+            fg = user32.GetForegroundWindow()
+            if fg != ctrl.target_hwnd:
+                print(
+                    f"\nAborted: target window lost focus "
+                    f"(sent {sent}/{len(steps)} key steps)",
+                    file=sys.stderr,
+                )
+                return 1
         modifiers = step.get("modifiers")
         delay_ms = step.get("delay_ms")
         ctrl.send_special_key(key, modifiers, delay_ms, no_focus=no_focus)
-    print(f"Sent {len(steps)} key steps")
+        sent += 1
+    print(f"Sent {sent} key steps")
     return 0
 
 
@@ -325,7 +385,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     # type
     p = sub.add_parser("type", help="Type text with inline tags")
-    p.add_argument("text", help='Text to type, e.g. "ls -la{enter}"')
+    p.add_argument("text", nargs="?", default=None,
+                   help='Text to type, e.g. "ls -la{enter}". '
+                        "Reads from stdin if omitted.")
     p.add_argument("-r", "--raw", action="store_true",
                    help="Disable tag interpretation; newlines become Enter")
     p.set_defaults(func=cmd_type)
