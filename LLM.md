@@ -44,7 +44,7 @@ In the examples below, `HWND` is the window handle obtained from `list-windows`.
 vwctl -H HWND ocr              # OCR the entire window
 vwctl -H HWND ocr -b           # OCR without bringing window to foreground
 vwctl -H HWND capture          # Save screenshot to timestamped JPEG
-vwctl -H HWND capture -q 60   # JPEG quality 1-95 (default: 85)
+vwctl -H HWND capture -q 60    # JPEG quality 1-95 (default: 85)
 vwctl -H HWND capture -o F.png # Save as PNG
 vwctl -H HWND capture -b       # Background capture (no foreground switch)
 ```
@@ -87,7 +87,7 @@ vwctl -H HWND keys '[{"key":"tab"},{"key":"enter","delay_ms":500}]'
 vwctl -H HWND click 400 300              # Left click at (400, 300) relative to window
 vwctl -H HWND click 400 300 -b right     # Right click
 vwctl -H HWND move 100 200               # Move cursor to (100, 200)
-vwctl -H HWND move 10 -5 -r             # Move cursor by offset
+vwctl -H HWND move 10 -5 -r              # Move cursor by offset
 vwctl -H HWND drag 0 0 200 200           # Drag from (0,0) to (200,200)
 vwctl -H HWND scroll 3                   # Scroll up
 vwctl -H HWND scroll -3                  # Scroll down
