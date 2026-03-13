@@ -512,9 +512,12 @@ class WindowController:
                 attached = user32.AttachThreadInput(current_thread_id, target_thread_id, True)
 
             try:
-                # Send ALT key to release foreground lock (Windows workaround)
-                user32.keybd_event(0x12, 0, 0, 0)  # ALT down
-                user32.keybd_event(0x12, 0, 2, 0)  # ALT up
+                # Only use ALT hack if target is not already the foreground window
+                foreground_before = user32.GetForegroundWindow()
+                if foreground_before != self.target_hwnd:
+                    # Send ALT key to release foreground lock (Windows workaround)
+                    user32.keybd_event(0x12, 0, 0, 0)  # ALT down
+                    user32.keybd_event(0x12, 0, 2, 0)  # ALT up
 
                 # Bring window to foreground
                 user32.BringWindowToTop(self.target_hwnd)
