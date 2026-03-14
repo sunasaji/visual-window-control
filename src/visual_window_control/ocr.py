@@ -77,7 +77,7 @@ class TerminalOCR:
         # Apply threshold to create binary image
         # This helps with clean terminal fonts
         threshold = 180
-        img = img.point(lambda x: 255 if x > threshold else 0, "L")
+        img = img.point(lambda x: 255 if x > threshold else 0, "L")  # type: ignore[operator]
 
         # Scale up for better recognition (2x)
         new_size = (img.width * 2, img.height * 2)
@@ -112,7 +112,7 @@ class TerminalOCR:
             return text
 
         except Exception as e:
-            logger.error(f"OCR failed: {e}")
+            logger.error("OCR failed: %s", e)
             return f"[OCR Error: {str(e)}]"
 
     def extract_text_with_confidence(
@@ -155,7 +155,7 @@ class TerminalOCR:
             return full_text, words_data
 
         except Exception as e:
-            logger.error(f"OCR failed: {e}")
+            logger.error("OCR failed: %s", e)
             return f"[OCR Error: {str(e)}]", []
 
     def _postprocess_text(self, text: str) -> str:
@@ -181,14 +181,6 @@ class TerminalOCR:
         # Remove excessive blank lines (more than 2 consecutive)
         result = "\n".join(cleaned_lines)
         result = re.sub(r"\n{4,}", "\n\n\n", result)
-
-        # Common OCR corrections for terminal content
-        corrections = {
-            "|s": "ls",
-            "1s": "ls",
-            "|": "l",  # Only in specific contexts
-            "0": "O",  # Context-dependent, be careful
-        }
 
         # Apply safe corrections only
         # These are patterns that are very unlikely in terminal output

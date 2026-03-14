@@ -21,6 +21,7 @@ class FocusLostError(Exception):
         self.chars_sent = chars_sent
         super().__init__(f"Target window lost focus after {chars_sent} characters")
 
+
 # Windows API constants
 SW_RESTORE = 9
 SW_SHOW = 5
@@ -203,7 +204,7 @@ class WindowController:
 
         self.target_hwnd = matches[0]["hwnd"]
         self.target_title = matches[0]["title"]
-        self.target_child_hwnd = self._find_deepest_child(self.target_hwnd)
+        self.target_child_hwnd = self._find_deepest_child(self.target_hwnd)  # type: ignore[arg-type]
 
         return f"Target set to: {self.target_title}"
 
@@ -256,7 +257,7 @@ class WindowController:
         user32.EnumChildWindows(
             hwnd,
             ENUMPROC(enum_child_callback),
-            wintypes.LPARAM(children_ref_id),
+            wintypes.LPARAM(children_ref_id),  # type: ignore[arg-type]
         )
 
         # Prefer render/input classes for CEF/Chrome hosted windows
@@ -309,7 +310,7 @@ class WindowController:
         user32.EnumChildWindows(
             self.target_hwnd,
             ENUMPROC(enum_child_callback),
-            wintypes.LPARAM(children_ref_id),
+            wintypes.LPARAM(children_ref_id),  # type: ignore[arg-type]
         )
         return children
 
@@ -382,7 +383,7 @@ class WindowController:
         vk = ord(key.upper())
         sc = user32.MapVirtualKeyW(vk, 0)
         if sc == 0:
-            logger.error(f"Could not map key to scancode: {key}")
+            logger.error("Could not map key to scancode: %s", key)
             return
 
         def make_lparam(scan, keyup):
@@ -474,7 +475,7 @@ class WindowController:
         elif key_lower in self._vk_map:
             vk = self._vk_map[key_lower]
         else:
-            logger.error(f"Unknown key for PostMessage: {key}")
+            logger.error("Unknown key for PostMessage: %s", key)
             return
 
         # Press modifiers
@@ -544,7 +545,7 @@ class WindowController:
             # Verify focus was set
             foreground = user32.GetForegroundWindow()
             if foreground != self.target_hwnd:
-                logger.warning(f"Focus may not have been set correctly. Expected {self.target_hwnd}, got {foreground}")
+                logger.warning("Focus may not have been set correctly. Expected %s, got %s", self.target_hwnd, foreground)
 
             # Try to focus child window if present
             if self.target_child_hwnd:
@@ -553,7 +554,7 @@ class WindowController:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to focus window: {e}")
+            logger.error("Failed to focus window: %s", e)
             return False
 
     def get_window_rect(self) -> tuple[int, int, int, int] | None:
@@ -644,7 +645,10 @@ class WindowController:
         gdi32.DeleteDC(hdc_mem)
         user32.ReleaseDC(self.target_hwnd, hdc_window)
 
-        return Image.frombuffer("RGBX", (width, height), buf, "raw", "BGRX", 0, 1).convert("RGB")
+        return Image.frombuffer(
+            "RGBX", (width, height), buf,  # type: ignore[arg-type]
+            "raw", "BGRX", 0, 1
+        ).convert("RGB")
 
     def capture_window(
         self, region: dict | None = None, background: bool = False
@@ -802,7 +806,7 @@ class WindowController:
                 key_part = part
 
         if key_part is None:
-            logger.error(f"No key found in tag: {tag}")
+            logger.error("No key found in tag: %s", tag)
             return
 
         # Use a shorter default delay for inline tags (100ms vs 600ms)
@@ -954,7 +958,7 @@ class WindowController:
 
         key_lower = key.lower()
         if key_lower not in self.special_keys:
-            logger.error(f"Unknown special key: {key}")
+            logger.error("Unknown special key: %s", key)
             return
 
         target_key = self.special_keys[key_lower]

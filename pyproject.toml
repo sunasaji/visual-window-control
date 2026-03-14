@@ -41,6 +41,123 @@ Issues = "https://github.com/sunasaji/visual-window-control/issues"
 mcp-visual-window-control = "visual_window_control.server:main"
 vwctl = "visual_window_control.cli:main"
 
+[tool.pylint.main]
+# Analyse tests alongside source code
+ignore-patterns = []
+
+[tool.pylint."messages control"]
+disable = [
+    # ── Line length / module size ──
+    # Handled by editor / formatter; not worth enforcing in CI.
+    "line-too-long",        # C0301
+    "too-many-lines",       # C0302
+
+    # ── Docstrings ──
+    # We add docstrings where they aid understanding, not mechanically.
+    "missing-module-docstring",    # C0114
+    "missing-class-docstring",     # C0115
+    "missing-function-docstring",  # C0116
+
+    # ── Naming conventions ──
+    # Win32 API constants (PROCESS_QUERY_LIMITED_INFORMATION, WNDENUMPROC, …)
+    # and ctypes struct fields (biSize, biWidth, …) follow Windows SDK naming.
+    # Module-level singletons (_controller, ocr) are intentionally lowercase.
+    "invalid-name",  # C0103
+
+    # ── Import ordering / placement ──
+    # cli.py sets sys.path before importing; tomllib is conditionally imported;
+    # test files must mock modules before importing the code under test.
+    "wrong-import-position",    # C0413
+    "wrong-import-order",       # C0411
+    "ungrouped-imports",        # C0412
+    "import-outside-toplevel",  # C0415
+
+    # ── Global statement ──
+    # Used for lazy-initialisation singletons (get_controller, get_ocr).
+    "global-statement",  # W0603
+
+    # ── Complexity thresholds ──
+    # server.call_tool is a large if/elif dispatcher — splitting it into
+    # smaller pieces would scatter related logic without real benefit.
+    # WindowController similarly has many attributes for its broad API.
+    "too-many-instance-attributes",         # R0902
+    "too-few-public-methods",               # R0903
+    "too-many-public-methods",              # R0904
+    "too-many-return-statements",           # R0911
+    "too-many-branches",                    # R0912
+    "too-many-arguments",                   # R0913
+    "too-many-locals",                      # R0914
+    "too-many-statements",                  # R0915
+    "too-many-positional-arguments",        # R0917
+
+    # ── Style preferences ──
+    # We keep elif after return/continue for readability in dispatchers.
+    "no-else-return",    # R1705
+    "no-else-continue",  # R1724
+
+    # ── Broad exception catching ──
+    # Top-level catch-all in OCR, tool handler, and focus_window ensures
+    # errors are logged and returned to the user rather than crashing.
+    "broad-exception-caught",  # W0718
+
+    # ── Test-specific ──
+    # Unit tests intentionally access private members and redefine fixture
+    # names that shadow outer scope — both are normal pytest patterns.
+    "protected-access",       # W0212
+    "redefined-outer-name",   # W0621
+
+    # ── Duplicate code ──
+    # Test files share module-mocking boilerplate by design.
+    "duplicate-code",  # R0801
+
+    # ── ctypes-specific ──
+    # ctypes Structure fields are set outside __init__ by design.
+    # _capture_printwindow re-imports ctypes.wintypes locally for clarity.
+    "attribute-defined-outside-init",  # W0201
+    "reimported",                      # W0404
+]
+
+[tool.pyright]
+typeCheckingMode = "standard"
+# ── Third-party stubs ──
+# pywin32, mss, pytesseract lack complete type stubs.
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportUnknownVariableType = false
+reportUnknownParameterType = false
+# ── MCP SDK return types ──
+# call_tool() returns a union (list | CallToolResult | …) whose members
+# don't all support indexing or .text — but in practice we always get a list.
+reportIndexIssue = false
+reportArgumentType = false
+# ── Test mock patterns ──
+# Tests assign mock dicts to WindowController.special_keys (dict[str, Key])
+# and access attributes on dynamic mock return values.
+reportAttributeAccessIssue = false
+# ── PIL operator stubs ──
+# img.point(lambda x: 255 if x > threshold else 0) triggers a false
+# positive because Pillow's stubs model the lambda param as ImagePointTransform.
+reportOperatorIssue = false
+
+[tool.mypy]
+ignore_missing_imports = true
+check_untyped_defs = true
+
+# Tests monkey-patch methods (e.g. Image.save) which mypy flags as
+# method-assign / incompatible assignment — expected in test code.
+[[tool.mypy.overrides]]
+module = "tests.*"
+disable_error_code = ["method-assign", "assignment"]
+
+[tool.flake8]
+# flake8 does not natively read pyproject.toml; this section is for
+# flake8 plugins (e.g. Flake8-pyproject) or editor integrations that do.
+max-line-length = 120
+extend-ignore = [
+    "E501",  # line too long — handled by editor / formatter
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -392,7 +392,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent | 
                 ctrl.send_keys(text, raw=raw, no_focus=no_focus,
                                check_focus=not no_focus)
             except FocusLostError as e:
-                return [TextContent(type="text",
+                return [TextContent(
+                    type="text",
                     text=f"Aborted: target window lost focus "
                          f"(sent {e.chars_sent}/{len(text)} characters)")]
             return [TextContent(type="text", text=f"Sent: {text}")]
@@ -411,7 +412,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent | 
             try:
                 ctrl.send_key_sequence(steps, check_focus=True)
             except FocusLostError as e:
-                return [TextContent(type="text",
+                return [TextContent(
+                    type="text",
                     text=f"Aborted: target window lost focus "
                          f"(sent {e.chars_sent}/{len(steps)} key steps)")]
             return [TextContent(type="text", text="Sent key sequence")]
@@ -490,7 +492,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent | 
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
     except Exception as e:
-        logger.exception(f"Error in tool {name}")
+        logger.exception("Error in tool %s", name)
         return [TextContent(type="text", text=f"Error: {str(e)}")]
 
 

@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 
 from visual_window_control.window_control import FocusLostError
 
@@ -39,7 +39,7 @@ def _setup_mocks():
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 # ── Tool routing tests ───────────────────────────────────────────────
@@ -156,7 +156,7 @@ class TestCallToolRouting:
         assert "down" in result[0].text
 
     def test_mouse_scroll_up(self):
-        ctrl, _ = _setup_mocks()
+        _setup_mocks()
 
         result = _run(server.call_tool("mouse_scroll", {"amount": 5}))
 
@@ -212,6 +212,7 @@ class TestCallToolRouting:
         # Capture the save call to verify quality
         saved_kwargs = {}
         original_save = img.save
+
         def mock_save(buf, **kwargs):
             saved_kwargs.update(kwargs)
             original_save(buf, **kwargs)
@@ -230,12 +231,13 @@ class TestCallToolRouting:
 
         saved_kwargs = {}
         original_save = img.save
+
         def mock_save(buf, **kwargs):
             saved_kwargs.update(kwargs)
             original_save(buf, **kwargs)
         img.save = mock_save
 
-        result = _run(server.call_tool("get_screen_image", {}))
+        _run(server.call_tool("get_screen_image", {}))
 
         assert saved_kwargs.get("quality") == 85
 
@@ -243,7 +245,7 @@ class TestCallToolRouting:
         ctrl, _ = _setup_mocks()
         steps = [{"key": "a"}, {"key": "b", "modifiers": ["ctrl"]}]
 
-        result = _run(server.call_tool("send_key_sequence", {"steps": steps}))
+        _run(server.call_tool("send_key_sequence", {"steps": steps}))
 
         ctrl.send_key_sequence.assert_called_once_with(steps, check_focus=True)
 

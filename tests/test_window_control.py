@@ -229,14 +229,14 @@ class TestSetTargetWindow:
         ctrl = self._make_ctrl_with_windows([
             {"hwnd": 222, "title": "Remote Desktop Connection"},
         ])
-        result = ctrl.set_target_window("Remote")
+        ctrl.set_target_window("Remote")
         assert ctrl.target_hwnd == 222
 
     def test_case_insensitive(self):
         ctrl = self._make_ctrl_with_windows([
             {"hwnd": 333, "title": "Command Prompt"},
         ])
-        result = ctrl.set_target_window("command prompt")
+        ctrl.set_target_window("command prompt")
         assert ctrl.target_hwnd == 333
 
     def test_no_match(self):
@@ -290,6 +290,7 @@ class TestSendKeysCheckFocus:
 
         # Simulate focus loss: _check_focus raises on second token
         call_count = 0
+
         def fake_check_focus(chars_sent):
             nonlocal call_count
             call_count += 1
@@ -327,6 +328,7 @@ class TestSendKeysCheckFocus:
         ctrl.send_special_key = MagicMock()
 
         call_count = 0
+
         def fake_check_focus(chars_sent):
             nonlocal call_count
             call_count += 1

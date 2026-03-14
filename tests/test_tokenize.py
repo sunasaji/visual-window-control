@@ -42,7 +42,7 @@ def ctrl():
 class TestIsValidTag:
     def test_known_special_keys(self, ctrl):
         for key in ("enter", "tab", "escape", "backspace", "delete",
-                     "up", "down", "left", "right", "f1", "f12", "space"):
+                    "up", "down", "left", "right", "f1", "f12", "space"):
             assert ctrl._is_valid_tag(key) is True
 
     def test_modifier_plus_key(self, ctrl):

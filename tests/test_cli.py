@@ -1,8 +1,7 @@
 """Tests for CLI argument parsing and config resolution."""
 
+import argparse
 import os
-import sys
-import tempfile
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -92,7 +91,6 @@ class TestLoadConfig:
 
 class TestGetJpegQuality:
     def _make_args(self, jpeg_quality=None):
-        import argparse
         return argparse.Namespace(jpeg_quality=jpeg_quality, config=None)
 
     def test_default(self):
@@ -225,8 +223,7 @@ _FAKE_WINDOWS = [
 
 
 class TestCmdListWindows:
-    def _make_args(self, *, json_flag: bool) -> "argparse.Namespace":
-        import argparse
+    def _make_args(self, *, json_flag: bool) -> argparse.Namespace:
         return argparse.Namespace(json=json_flag)
 
     def test_plain_output(self, capsys):
@@ -266,7 +263,6 @@ class TestCmdListWindows:
 class TestCmdType:
     def _make_args(self, text=None, raw=False, window="Test", hwnd=None, no_focus=False,
                    config=None):
-        import argparse
         return argparse.Namespace(
             text=text, raw=raw, window=window, hwnd=hwnd,
             no_focus=no_focus, config=config,
@@ -337,13 +333,14 @@ class TestCmdType:
             ctrl.send_keys.side_effect = FocusLostError(3)
             rc = cmd_type(self._make_args(text="hello"))
         assert rc == 1
-        assert "lost focus" in capsys.readouterr().err
-        assert "3 characters" in capsys.readouterr().err or True  # already consumed
+        err = capsys.readouterr().err
+        assert "lost focus" in err
 
     def test_focus_lost_stdin(self, capsys):
         """Focus loss during stdin streaming: reports cumulative chars."""
         call_count = 0
-        def fake_send_keys(*args, **kwargs):
+
+        def fake_send_keys(*_args, **_kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 2:
@@ -371,7 +368,6 @@ class TestCmdType:
 class TestCmdKeys:
     def _make_args(self, steps_json, window="Test", hwnd=None, no_focus=False,
                    config=None):
-        import argparse
         return argparse.Namespace(
             steps_json=steps_json, window=window, hwnd=hwnd,
             no_focus=no_focus, config=config,
@@ -397,6 +393,7 @@ class TestCmdKeys:
     def test_focus_lost_aborts(self, capsys):
         steps = '[{"key":"tab"},{"key":"enter"},{"key":"space"}]'
         call_count = 0
+
         def fake_get_fg():
             nonlocal call_count
             call_count += 1
@@ -414,7 +411,7 @@ class TestCmdKeys:
         assert "lost focus" in err
         assert "2/3" in err
 
-    def test_no_focus_skips_check(self, capsys):
+    def test_no_focus_skips_check(self):
         steps = '[{"key":"tab"},{"key":"enter"}]'
         with self._patch_set_window(), \
              patch.object(_cli_mod, "get_controller") as mock_gc, \
