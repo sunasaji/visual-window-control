@@ -37,7 +37,10 @@ def _load_config(config_path: str | None = None) -> dict:
       3. ./vwctl.toml (current directory)
       4. ~/.config/vwctl/config.toml (Linux) / %APPDATA%\\vwctl\\config.toml (Windows)
     """
-    import tomllib
+    try:
+        import tomllib  # Python 3.11+
+    except ModuleNotFoundError:
+        import tomli as tomllib  # type: ignore[no-redef]  # Python 3.10 fallback
 
     candidates: list[str] = []
     if config_path:

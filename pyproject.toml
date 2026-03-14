@@ -30,6 +30,7 @@ dependencies = [
     "pynput>=1.7.6",
     "mss>=9.0.0",
     "pywin32>=306",
+    "tomli>=2.0.0; python_version < '3.11'",
 ]
 
 [project.urls]
