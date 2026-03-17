@@ -133,6 +133,44 @@ class TestSendKeysBranching:
         for c in ctrl.send_special_key.call_args_list:
             assert c == call("enter", [], delay_ms=100)
 
+    def test_raw_mode_crlf(self):
+        """Raw mode: CRLF line endings produce a single Enter per line break."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+        ctrl.send_special_key = MagicMock()
+
+        ctrl.send_keys("line1\r\nline2\r\n", raw=True)
+
+        ctrl.keyboard.type.assert_any_call("line1")
+        ctrl.keyboard.type.assert_any_call("line2")
+        assert ctrl.send_special_key.call_count == 2
+
+    def test_raw_mode_cr_only(self):
+        """Raw mode: CR-only line endings produce Enter presses."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+        ctrl.send_special_key = MagicMock()
+
+        ctrl.send_keys("line1\rline2\r", raw=True)
+
+        ctrl.keyboard.type.assert_any_call("line1")
+        ctrl.keyboard.type.assert_any_call("line2")
+        assert ctrl.send_special_key.call_count == 2
+
+    def test_raw_mode_mixed_line_endings(self):
+        """Raw mode: mixed LF, CRLF, CR all produce single Enter each."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+        ctrl.send_special_key = MagicMock()
+
+        ctrl.send_keys("a\nb\r\nc\r", raw=True)
+
+        ctrl.keyboard.type.assert_any_call("a")
+        ctrl.keyboard.type.assert_any_call("b")
+        ctrl.keyboard.type.assert_any_call("c")
+        assert ctrl.keyboard.type.call_count == 3
+        assert ctrl.send_special_key.call_count == 3
+
     def test_no_focus_with_tags(self):
         """No-focus mode: PostMessage for text + tags, no focus_window call."""
         ctrl = _make_ctrl(target_child_hwnd=99999)
@@ -205,6 +243,54 @@ class TestSendKeysBranching:
 
         ctrl._send_tag.assert_not_called()
         ctrl.keyboard.type.assert_called_once_with("{enter}")
+
+    def test_raw_rejects_control_characters(self):
+        """Raw mode should reject control characters other than \\t, \\n, \\r."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+
+        with pytest.raises(ValueError, match=r"U\+001B.*position 5"):
+            ctrl.send_keys("hello\x1bworld", raw=True)
+
+    def test_raw_allows_tab(self):
+        """Raw mode should allow tab characters."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+
+        ctrl.send_keys("col1\tcol2", raw=True)
+        ctrl.keyboard.type.assert_called_once_with("col1\tcol2")
+
+    def test_raw_rejects_null_byte(self):
+        """Raw mode should reject null bytes."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+
+        with pytest.raises(ValueError, match=r"U\+0000"):
+            ctrl.send_keys("abc\x00def", raw=True)
+
+    def test_tag_mode_rejects_control_characters(self):
+        """Tag mode should reject control characters."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+
+        with pytest.raises(ValueError, match=r"U\+001B"):
+            ctrl.send_keys("hello\x1bworld")
+
+    def test_tag_mode_rejects_tab(self):
+        """Tag mode should reject \\t (use {tab} tag instead)."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+
+        with pytest.raises(ValueError, match=r"U\+0009"):
+            ctrl.send_keys("col1\tcol2")
+
+    def test_tag_mode_rejects_bare_newline(self):
+        """Tag mode should reject bare \\n (use {enter} tag instead)."""
+        ctrl = _make_ctrl()
+        ctrl.focus_window = MagicMock(return_value=True)
+
+        with pytest.raises(ValueError, match=r"U\+000A"):
+            ctrl.send_keys("line1\nline2")
 
 
 # ── set_target_window ────────────────────────────────────────────────

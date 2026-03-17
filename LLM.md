@@ -86,6 +86,12 @@ vwctl -H HWND keys '[{"key":"tab"},{"key":"enter","delay_ms":500}]'
 - Escaping: `{{` → literal `{`, `}}` → literal `}`
 - Unrecognized `{content}` passes through as-is (safe for code with braces)
 
+**Supported characters** — text containing unsupported characters is rejected before any keystrokes are sent:
+- Tag mode: printable characters only (U+0020–U+007E, U+0080+). All special keys via `{tag}` syntax.
+- Raw mode: printable characters + `\t` (Tab) + line endings (`\n`, `\r\n`, `\r` → Enter). No modifier combos.
+- Control characters (escape sequences, null bytes, etc.) are not supported in either mode. To send arbitrary data, base64-encode it and decode on the remote side:
+  `echo "echo '$(base64 -w0 file)' | base64 -d > /tmp/file{enter}" | vwctl -H HWND type -t`
+
 **Mode defaults**: Text argument defaults to tag mode. Stdin and `--file` default to raw mode. Use `-r`/`--raw` or `-t`/`--tags` to override (mutually exclusive).
 
 ### Send mouse input

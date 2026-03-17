@@ -251,6 +251,9 @@ def cmd_type(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
     print("Error: text argument or stdin is required", file=sys.stderr)
     return 1

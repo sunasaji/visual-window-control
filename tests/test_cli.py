@@ -15,7 +15,7 @@ with patch.dict("sys.modules", {
     "pytesseract": MagicMock(),
 }):
     import visual_window_control.cli as _cli_mod
-    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows, cmd_type, cmd_keys, _get_jpeg_quality, _read_type_input
+    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows, cmd_type, cmd_keys, _get_jpeg_quality
     from visual_window_control.window_control import FocusLostError
 
 
@@ -416,7 +416,7 @@ class TestCmdType:
         )
         assert "19 characters" in capsys.readouterr().out
 
-    def test_file_with_tags_flag(self, capsys, tmp_path):
+    def test_file_with_tags_flag(self, tmp_path):
         """--file with --tags enables tag interpretation."""
         f = tmp_path / "input.txt"
         f.write_text("hello{enter}", encoding="utf-8")
@@ -432,7 +432,7 @@ class TestCmdType:
             "hello{enter}", raw=False, no_focus=False, check_focus=True,
         )
 
-    def test_stdin_with_tags_flag(self, capsys):
+    def test_stdin_with_tags_flag(self):
         """Stdin with --tags enables tag interpretation."""
         with self._patch_set_window(), \
              patch.object(_cli_mod, "get_controller") as mock_gc, \
@@ -447,7 +447,7 @@ class TestCmdType:
             "hello{enter}\n", raw=False, no_focus=False, check_focus=True,
         )
 
-    def test_file_option_ignores_stdin(self, capsys, tmp_path):
+    def test_file_option_ignores_stdin(self, tmp_path):
         """--file takes priority over stdin."""
         f = tmp_path / "input.txt"
         f.write_text("from file", encoding="utf-8")

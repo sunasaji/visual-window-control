@@ -165,9 +165,30 @@ Text input supports `{tag}` syntax for special keys:
 
 **Escaping**: `{{` → literal `{`, `}}` → literal `}`
 
+### Supported Characters
+
+Each mode accepts a specific set of characters. Text containing unsupported characters (e.g. escape sequences, null bytes) will be rejected with an error before any keystrokes are sent.
+
+| Mode | Accepted characters | Special keys |
+|------|-------------------|--------------|
+| **Tag mode** (default for text arg) | Printable characters (U+0020–U+007E, U+0080+) | Via `{tag}` syntax: `{enter}`, `{tab}`, `{ctrl+c}`, etc. |
+| **Raw mode** (`-r`, default for stdin/file) | Printable characters + `\t` (Tab) + line endings (`\n`, `\r\n`, `\r` → Enter) | None (modifier combos like Ctrl+C not available) |
+
+**Choosing a mode**: Use raw mode (`-r`) for multi-line or long text input where modifier key combinations are not needed. Use tag mode for interactive sequences that require special keys or modifiers.
+
+**Sending arbitrary data**: If your text contains control characters or escape sequences (e.g. ANSI codes), encode it as base64 and decode on the remote side:
+
+```bash
+# Encode locally, type via raw mode, decode on remote
+base64 -w0 binary_file.dat | vwctl -H HWND type -f -
+# Then on the remote side: echo "<pasted>" | base64 -d > file
+# Or as a single pipeline command:
+echo "echo '$(base64 -w0 binary_file.dat)' | base64 -d > /tmp/file{enter}" | vwctl -H HWND type -t
+```
+
 ### Raw Mode
 
-Disable all tag interpretation. Newline characters (`\n`) are sent as Enter key presses, and other control characters like tab (`\t`) are sent as-is. For multi-line or long text input where modifier key combinations (e.g. `{ctrl+c}`) are not needed, raw mode (`-r`) is recommended.
+Disable all tag interpretation. Line endings (`\n`, `\r\n`, `\r`) are sent as Enter key presses, and tab characters (`\t`) are sent as Tab. For multi-line or long text input where modifier key combinations (e.g. `{ctrl+c}`) are not needed, raw mode (`-r`) is recommended.
 
 ```bash
 # CLI

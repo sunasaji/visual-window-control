@@ -2,6 +2,7 @@
 
 import ctypes
 import logging
+import re
 import time
 from ctypes import wintypes
 from typing import Literal
@@ -832,8 +833,8 @@ class WindowController:
         collide with a recognized tag name.
 
         Raw mode (raw=True): Disables all {tag} interpretation.
-        Newline characters (\\n) in the string are sent as Enter key presses.
-        Use literal \\n (escaped as \\\\n in JSON) to type a backslash + n.
+        Line endings (LF, CRLF, CR) are sent as Enter key presses.
+        All other printable characters and tabs are sent as-is.
 
         Args:
             text: Text to type, with optional {tag} sequences
@@ -875,9 +876,21 @@ class WindowController:
 
         chars_sent = 0
 
+        # Reject unsupported control characters before sending
+        # Raw mode allows \t, \n, \r (tab and line endings handled explicitly)
+        # Tag mode: all special keys via {tags}, no control characters allowed
+        allowed_ctrl = r'\t\n\r' if raw else ''
+        bad = re.search(rf'[^{allowed_ctrl}\x20-\x7e\x80-\uffff]', text)
+        if bad:
+            ch = bad.group()
+            raise ValueError(
+                f"unsupported control character U+{ord(ch):04X} "
+                f"at position {bad.start()}"
+            )
+
         if raw:
-            # Raw mode: no tag parsing, newlines → Enter
-            segments = text.split('\n')
+            # Handle all line ending conventions: CRLF, CR, LF
+            segments = re.split(r'\r\n|\r|\n', text)
             for idx, segment in enumerate(segments):
                 if check_focus:
                     self._check_focus(chars_sent)
