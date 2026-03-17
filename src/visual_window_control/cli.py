@@ -162,36 +162,74 @@ def cmd_list_windows(args: argparse.Namespace) -> int:
     return 0
 
 
+def _read_type_input(args: argparse.Namespace) -> tuple[str | None, bool, bool]:
+    """Resolve text input for the type command.
+
+    Returns (text_or_None, is_streaming, from_file_or_stdin).
+    is_streaming=True means caller should iterate sys.stdin line-by-line.
+    from_file_or_stdin=True means input came from --file or stdin (raw default).
+    """
+    has_stdin = not sys.stdin.isatty()
+
+    # --file takes highest priority; "-" means stdin
+    file_path = getattr(args, "file", None)
+    if file_path == "-":
+        if not has_stdin:
+            return None, False, True  # will trigger "required" error
+        return None, True, True  # stream stdin
+    if file_path:
+        with open(file_path, encoding="utf-8") as f:
+            return f.read(), False, True
+
+    text = args.text
+
+    # Explicit text argument wins; ignore residual stdin
+    if text is not None:
+        if has_stdin:
+            # Drain stdin to avoid leaking into subsequent pipeline commands
+            sys.stdin.read()
+        return text, False, False
+
+    # No text arg — try stdin
+    if has_stdin:
+        return None, True, True  # stream stdin
+
+    return None, False, False  # nothing provided
+
+
 def cmd_type(args: argparse.Namespace) -> int:
     if rc := _set_window(args):
         return rc
 
-    has_text_arg = args.text is not None
-    has_stdin = not sys.stdin.isatty()
+    text, is_streaming, from_file_or_stdin = _read_type_input(args)
 
-    if has_text_arg and has_stdin:
-        print("Error: cannot use both text argument and stdin", file=sys.stderr)
-        return 1
+    # Determine raw mode: explicit flags win, otherwise default by source
+    if args.raw:
+        raw = True
+    elif args.tags:
+        raw = False
+    else:
+        raw = from_file_or_stdin  # file/stdin default raw, positional default tags
 
     ctrl = get_controller()
     no_focus = _is_no_focus(args)
     check_focus = not no_focus
 
     try:
-        if has_text_arg:
+        if text is not None:
             ctrl.send_keys(
-                args.text, raw=args.raw, no_focus=no_focus,
+                text, raw=raw, no_focus=no_focus,
                 check_focus=check_focus,
             )
-            print(f"Typed {len(args.text)} characters")
+            print(f"Typed {len(text)} characters")
             return 0
 
-        if has_stdin:
+        if is_streaming:
             total_chars = 0
             try:
                 for line in sys.stdin:
                     ctrl.send_keys(
-                        line, raw=args.raw, no_focus=no_focus,
+                        line, raw=raw, no_focus=no_focus,
                         check_focus=check_focus,
                     )
                     total_chars += len(line)
@@ -400,8 +438,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("text", nargs="?", default=None,
                    help='Text to type, e.g. "ls -la{enter}". '
                         "Reads from stdin if omitted.")
-    p.add_argument("-r", "--raw", action="store_true",
-                   help="Disable tag interpretation; newlines become Enter")
+    p.add_argument("-f", "--file", metavar="PATH",
+                   help='Read text from a file (use "-" for stdin)')
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument("-r", "--raw", action="store_true",
+                      help="Disable tag interpretation; newlines become Enter")
+    mode.add_argument("-t", "--tags", action="store_true",
+                      help="Enable {tag} interpretation (default for text arg; "
+                           "use with -f/stdin to override raw default)")
     p.set_defaults(func=cmd_type)
 
     # key

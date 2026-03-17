@@ -73,7 +73,7 @@ vwctl -w "Command Prompt" -n type "dir{enter}"
 | Command | Description |
 |---------|-------------|
 | `list-windows` | List all visible windows with hwnd and title |
-| `type [TEXT]` | Type text with inline `{tag}` support (reads from stdin if omitted) |
+| `type [TEXT] [-f FILE]` | Type text with inline `{tag}` support (reads from stdin if omitted; `-f` to read from file, `-f -` for explicit stdin) |
 | `key KEY [-m MOD]` | Send a single key press with optional modifiers |
 | `keys JSON` | Send a key sequence from JSON array (per-step modifiers and delays) |
 | `click X Y [-b]` | Click at position relative to window |
@@ -167,7 +167,7 @@ Text input supports `{tag}` syntax for special keys:
 
 ### Raw Mode
 
-Disable all tag interpretation. Newline characters (`\n`) are sent as Enter key presses.
+Disable all tag interpretation. Newline characters (`\n`) are sent as Enter key presses, and other control characters like tab (`\t`) are sent as-is. For multi-line or long text input where modifier key combinations (e.g. `{ctrl+c}`) are not needed, raw mode (`-r`) is recommended.
 
 ```bash
 # CLI
@@ -178,22 +178,32 @@ echo world
 # MCP: {"text": "echo hello\necho world\n", "raw": true}
 ```
 
-### Stdin Input
+### Stdin and File Input
 
-When the text argument is omitted, `type` reads from stdin line by line. This enables piping and streaming:
+When the text argument is omitted, `type` reads from stdin line by line. Use `--file`/`-f` to read from a file, or `-f -` for explicit stdin.
+
+Stdin and file input **default to raw mode** (no tag interpretation), since the typical use case is piping file/program output. Use `-t`/`--tags` to enable tag interpretation for these sources.
 
 ```bash
-# Pipe from another command
-echo "ls -la{enter}" | vwctl -w "Remote Desktop" type
+# Pipe from another command (raw by default)
+echo "ls -la" | vwctl -w "Remote Desktop" type
 
-# Pipe file contents
-cat commands.txt | vwctl -w "Remote Desktop" type -r
+# Explicit stdin with "-f -"
+cat commands.txt | vwctl -w "Remote Desktop" type -f -
+
+# Read from a file directly (raw by default)
+vwctl -w "Remote Desktop" type -f commands.txt
+
+# File input with tag interpretation
+vwctl -w "Remote Desktop" type -f commands.txt -t
 
 # Streaming (line-by-line as data arrives)
-tail -f commands.fifo | vwctl -w "Remote Desktop" type -r
+tail -f commands.fifo | vwctl -w "Remote Desktop" type
 ```
 
-Providing both a text argument and stdin is an error.
+If both a text argument and stdin are present, the text argument wins (stdin is ignored).
+
+`-r`/`--raw` and `-t`/`--tags` are mutually exclusive.
 
 ### Focus Loss Detection
 

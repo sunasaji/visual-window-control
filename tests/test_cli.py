@@ -15,7 +15,7 @@ with patch.dict("sys.modules", {
     "pytesseract": MagicMock(),
 }):
     import visual_window_control.cli as _cli_mod
-    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows, cmd_type, cmd_keys, _get_jpeg_quality
+    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows, cmd_type, cmd_keys, _get_jpeg_quality, _read_type_input
     from visual_window_control.window_control import FocusLostError
 
 
@@ -146,6 +146,21 @@ class TestBuildParser:
         args = parser.parse_args(["-w", "Test", "type", "-r", "hello"])
         assert args.raw is True
 
+    def test_type_file_option(self, parser):
+        args = parser.parse_args(["-w", "Test", "type", "--file", "input.txt"])
+        assert args.file == "input.txt"
+        assert args.text is None
+
+    def test_type_file_dash_stdin(self, parser):
+        args = parser.parse_args(["-w", "Test", "type", "-f", "-"])
+        assert args.file == "-"
+        assert args.text is None
+
+    def test_type_tags_flag(self, parser):
+        args = parser.parse_args(["-w", "Test", "type", "-t", "-f", "input.txt"])
+        assert args.tags is True
+        assert args.raw is False
+
     def test_key_with_modifier(self, parser):
         args = parser.parse_args(["-w", "Test", "key", "c", "-m", "ctrl"])
         assert args.key == "c"
@@ -261,11 +276,11 @@ class TestCmdListWindows:
 
 
 class TestCmdType:
-    def _make_args(self, text=None, raw=False, window="Test", hwnd=None, no_focus=False,
-                   config=None):
+    def _make_args(self, text=None, raw=False, tags=False, window="Test",
+                   hwnd=None, no_focus=False, config=None, file=None):
         return argparse.Namespace(
-            text=text, raw=raw, window=window, hwnd=hwnd,
-            no_focus=no_focus, config=config,
+            text=text, raw=raw, tags=tags, window=window, hwnd=hwnd,
+            no_focus=no_focus, config=config, file=file,
         )
 
     def _patch_set_window(self):
@@ -287,7 +302,7 @@ class TestCmdType:
         assert "5 characters" in capsys.readouterr().out
 
     def test_stdin_input(self, capsys):
-        """Stdin input: reads line by line and calls send_keys per line."""
+        """Stdin input: reads line by line, defaults to raw mode."""
         with self._patch_set_window(), \
              patch.object(_cli_mod, "get_controller") as mock_gc, \
              patch.object(_cli_mod, "_is_no_focus", return_value=False), \
@@ -298,18 +313,27 @@ class TestCmdType:
             rc = cmd_type(self._make_args(text=None))
         assert rc == 0
         assert ctrl.send_keys.call_count == 2
+        # stdin defaults to raw=True
+        ctrl.send_keys.assert_any_call(
+            "line1\n", raw=True, no_focus=False, check_focus=True,
+        )
         assert "12 characters" in capsys.readouterr().out
 
-    def test_both_text_and_stdin_errors(self, capsys):
-        """Both text arg and stdin: returns error."""
+    def test_text_arg_wins_over_stdin(self, capsys):
+        """Both text arg and stdin: text arg wins, stdin is drained."""
         with self._patch_set_window(), \
-             patch.object(_cli_mod, "get_controller"), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
              patch.object(_cli_mod, "_is_no_focus", return_value=False), \
              patch("sys.stdin") as mock_stdin:
             mock_stdin.isatty.return_value = False
+            mock_stdin.read.return_value = ""
+            ctrl = mock_gc.return_value
             rc = cmd_type(self._make_args(text="hello"))
-        assert rc == 1
-        assert "cannot use both" in capsys.readouterr().err
+        assert rc == 0
+        ctrl.send_keys.assert_called_once_with(
+            "hello", raw=False, no_focus=False, check_focus=True,
+        )
+        assert "5 characters" in capsys.readouterr().out
 
     def test_neither_text_nor_stdin_errors(self, capsys):
         """No text arg and no stdin: returns error."""
@@ -360,6 +384,84 @@ class TestCmdType:
         assert "lost focus" in err
         # First line "aaa\n" (4 chars) + 2 chars into second line = 6
         assert "6 characters" in err
+
+    def test_file_dash_reads_stdin(self, capsys):
+        """--file='-' streams from stdin."""
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = False
+            mock_stdin.__iter__ = MagicMock(return_value=iter(["abc\n"]))
+            ctrl = mock_gc.return_value
+            rc = cmd_type(self._make_args(file="-"))
+        assert rc == 0
+        ctrl.send_keys.assert_called_once()
+        assert "4 characters" in capsys.readouterr().out
+
+    def test_file_option(self, capsys, tmp_path):
+        """--file reads text from file, defaults to raw mode."""
+        f = tmp_path / "input.txt"
+        f.write_text("file content{enter}", encoding="utf-8")
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = True
+            ctrl = mock_gc.return_value
+            rc = cmd_type(self._make_args(file=str(f)))
+        assert rc == 0
+        ctrl.send_keys.assert_called_once_with(
+            "file content{enter}", raw=True, no_focus=False, check_focus=True,
+        )
+        assert "19 characters" in capsys.readouterr().out
+
+    def test_file_with_tags_flag(self, capsys, tmp_path):
+        """--file with --tags enables tag interpretation."""
+        f = tmp_path / "input.txt"
+        f.write_text("hello{enter}", encoding="utf-8")
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = True
+            ctrl = mock_gc.return_value
+            rc = cmd_type(self._make_args(file=str(f), tags=True))
+        assert rc == 0
+        ctrl.send_keys.assert_called_once_with(
+            "hello{enter}", raw=False, no_focus=False, check_focus=True,
+        )
+
+    def test_stdin_with_tags_flag(self, capsys):
+        """Stdin with --tags enables tag interpretation."""
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = False
+            mock_stdin.__iter__ = MagicMock(return_value=iter(["hello{enter}\n"]))
+            ctrl = mock_gc.return_value
+            rc = cmd_type(self._make_args(text=None, tags=True))
+        assert rc == 0
+        ctrl.send_keys.assert_called_once_with(
+            "hello{enter}\n", raw=False, no_focus=False, check_focus=True,
+        )
+
+    def test_file_option_ignores_stdin(self, capsys, tmp_path):
+        """--file takes priority over stdin."""
+        f = tmp_path / "input.txt"
+        f.write_text("from file", encoding="utf-8")
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False), \
+             patch("sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = False
+            ctrl = mock_gc.return_value
+            rc = cmd_type(self._make_args(file=str(f)))
+        assert rc == 0
+        ctrl.send_keys.assert_called_once_with(
+            "from file", raw=True, no_focus=False, check_focus=True,
+        )
 
 
 # ── cmd_keys ─────────────────────────────────────────────────────────

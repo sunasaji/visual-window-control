@@ -52,19 +52,24 @@ vwctl -H HWND capture -b       # Background capture (no foreground switch)
 ### Send keyboard input
 
 ```bash
-# Type text with inline special keys
+# Type text with inline special keys (tag mode, default for text arg)
 vwctl -H HWND type "ls -la{enter}"
 vwctl -H HWND type "cd /tmp{enter}"
 vwctl -H HWND type "{ctrl+c}"
 
-# Type from stdin (pipe or streaming)
-echo "ls -la{enter}" | vwctl -H HWND type
-cat commands.txt | vwctl -H HWND type -r
-
-# Raw mode: no tag parsing, \n becomes Enter
+# Raw mode: no tag parsing, \n becomes Enter, \t becomes Tab
+# Recommended for multi-line/long text where modifier keys ({ctrl+c} etc.) are not needed
 vwctl -H HWND type -r "line1
 line2
 "
+
+# Read from file (raw by default; use -t for tag interpretation)
+vwctl -H HWND type -f commands.txt
+vwctl -H HWND type -f commands.txt -t
+
+# Read from stdin (raw by default; use -t for tag interpretation)
+cat commands.txt | vwctl -H HWND type
+cat commands.txt | vwctl -H HWND type -f -
 
 # Send a single key with modifiers
 vwctl -H HWND key enter
@@ -75,11 +80,13 @@ vwctl -H HWND key a -m ctrl -m shift
 vwctl -H HWND keys '[{"key":"tab"},{"key":"enter","delay_ms":500}]'
 ```
 
-**Inline tags** (used in `type` command):
+**Inline tags** (used in `type` command, tag mode):
 - Keys: `{enter}`, `{tab}`, `{escape}`, `{backspace}`, `{delete}`, `{up}`, `{down}`, `{left}`, `{right}`, `{home}`, `{end}`, `{pageup}`, `{pagedown}`, `{space}`, `{f1}`–`{f12}`
 - Modifiers: `{ctrl+c}`, `{alt+f4}`, `{shift+tab}`, `{ctrl+shift+a}`
 - Escaping: `{{` → literal `{`, `}}` → literal `}`
 - Unrecognized `{content}` passes through as-is (safe for code with braces)
+
+**Mode defaults**: Text argument defaults to tag mode. Stdin and `--file` default to raw mode. Use `-r`/`--raw` or `-t`/`--tags` to override (mutually exclusive).
 
 ### Send mouse input
 
