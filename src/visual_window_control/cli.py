@@ -264,7 +264,8 @@ def cmd_key(args: argparse.Namespace) -> int:
         return rc
     ctrl = get_controller()
     modifiers = args.mod or []
-    ctrl.send_special_key(args.key, modifiers, no_focus=_is_no_focus(args))
+    delay_ms = getattr(args, "delay", None)
+    ctrl.send_special_key(args.key, modifiers, delay_ms, no_focus=_is_no_focus(args))
     mod_str = "+".join(modifiers) + "+" if modifiers else ""
     print(f"Sent: {mod_str}{args.key}")
     return 0
@@ -455,6 +456,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("key", help="Send a single key press")
     p.add_argument("key", help="Key name (e.g. enter, tab, a, f1)")
     p.add_argument("-m", "--mod", action="append", help="Modifier key (ctrl, shift, alt)")
+    p.add_argument("-d", "--delay", type=int, default=None, metavar="MS",
+                   help="Delay after key press (ms). Default: 600 (focus) / 100 (no-focus)")
     p.set_defaults(func=cmd_key)
 
     # keys

@@ -15,7 +15,7 @@ with patch.dict("sys.modules", {
     "pytesseract": MagicMock(),
 }):
     import visual_window_control.cli as _cli_mod
-    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows, cmd_type, cmd_keys, _get_jpeg_quality
+    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows, cmd_type, cmd_key, cmd_keys, _get_jpeg_quality
     from visual_window_control.window_control import FocusLostError
 
 
@@ -165,6 +165,18 @@ class TestBuildParser:
         args = parser.parse_args(["-w", "Test", "key", "c", "-m", "ctrl"])
         assert args.key == "c"
         assert args.mod == ["ctrl"]
+
+    def test_key_delay_default_none(self, parser):
+        args = parser.parse_args(["-w", "Test", "key", "enter"])
+        assert args.delay is None
+
+    def test_key_delay_short_flag(self, parser):
+        args = parser.parse_args(["-w", "Test", "key", "enter", "-d", "200"])
+        assert args.delay == 200
+
+    def test_key_delay_long_flag(self, parser):
+        args = parser.parse_args(["-w", "Test", "key", "f", "-m", "alt", "--delay", "800"])
+        assert args.delay == 800
 
     def test_click(self, parser):
         args = parser.parse_args(["-w", "Test", "click", "100", "200"])
@@ -461,6 +473,54 @@ class TestCmdType:
         assert rc == 0
         ctrl.send_keys.assert_called_once_with(
             "from file", raw=True, no_focus=False, check_focus=True,
+        )
+
+
+# ── cmd_key ──────────────────────────────────────────────────────────
+
+
+class TestCmdKey:
+    def _make_args(self, key, mod=None, delay=None, window="Test", hwnd=None,
+                   no_focus=False, config=None):
+        return argparse.Namespace(
+            key=key, mod=mod, delay=delay, window=window, hwnd=hwnd,
+            no_focus=no_focus, config=config,
+        )
+
+    def _patch_set_window(self):
+        return patch.object(_cli_mod, "_set_window", return_value=0)
+
+    def test_sends_key_with_default_delay(self):
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False):
+            ctrl = mock_gc.return_value
+            rc = cmd_key(self._make_args("enter"))
+        assert rc == 0
+        ctrl.send_special_key.assert_called_once_with(
+            "enter", [], None, no_focus=False,
+        )
+
+    def test_sends_key_with_custom_delay(self):
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=False):
+            ctrl = mock_gc.return_value
+            rc = cmd_key(self._make_args("f", mod=["alt"], delay=800))
+        assert rc == 0
+        ctrl.send_special_key.assert_called_once_with(
+            "f", ["alt"], 800, no_focus=False,
+        )
+
+    def test_sends_key_no_focus_with_delay(self):
+        with self._patch_set_window(), \
+             patch.object(_cli_mod, "get_controller") as mock_gc, \
+             patch.object(_cli_mod, "_is_no_focus", return_value=True):
+            ctrl = mock_gc.return_value
+            rc = cmd_key(self._make_args("tab", delay=50))
+        assert rc == 0
+        ctrl.send_special_key.assert_called_once_with(
+            "tab", [], 50, no_focus=True,
         )
 
 

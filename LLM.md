@@ -75,10 +75,13 @@ cat commands.txt | vwctl -H HWND type -f -
 vwctl -H HWND key enter
 vwctl -H HWND key c -m ctrl
 vwctl -H HWND key a -m ctrl -m shift
+vwctl -H HWND key f -m alt -d 800    # custom delay (ms) after key press
 
-# Send a key sequence (JSON array)
+# Send a key sequence (JSON array, with optional per-step delay_ms)
 vwctl -H HWND keys '[{"key":"tab"},{"key":"enter","delay_ms":500}]'
 ```
+
+**Key delay (`delay_ms`)**: After each key press, `vwctl` waits before proceeding. Defaults: 600 ms in focus mode, 100 ms in no-focus mode (`-n`), 100 ms for inline `{tag}` in `type`. Override per step in `keys` JSON via `delay_ms` (milliseconds). Increase for slow UI transitions (menus, dialogs); decrease for fast sequential input.
 
 **Inline tags** (used in `type` command, tag mode):
 - Keys: `{enter}`, `{tab}`, `{escape}`, `{backspace}`, `{delete}`, `{up}`, `{down}`, `{left}`, `{right}`, `{home}`, `{end}`, `{pageup}`, `{pagedown}`, `{space}`, `{f1}`–`{f12}`

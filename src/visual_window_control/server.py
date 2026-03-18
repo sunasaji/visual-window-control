@@ -9,11 +9,7 @@ from typing import Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import (
-    TextContent,
-    ImageContent,
-    Tool,
-)
+from mcp.types import ImageContent, TextContent, Tool
 
 from .ocr import TerminalOCR
 from .window_control import FocusLostError, WindowController
@@ -207,7 +203,10 @@ async def list_tools() -> list[Tool]:
                                     "type": "array",
                                     "items": {"type": "string"},
                                 },
-                                "delay_ms": {"type": "integer"},
+                                "delay_ms": {
+                                    "type": "integer",
+                                    "description": "Delay after this key step (ms). Default: 600ms (focus) / 100ms (no-focus)",
+                                },
                             },
                             "required": ["key"],
                         },

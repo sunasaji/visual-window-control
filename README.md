@@ -38,7 +38,10 @@ echo "ls -la{enter}" | vwctl -w "Remote Desktop" type
 # Send a special key with modifiers
 vwctl -w "Remote Desktop" key c -m ctrl
 
-# Send a key sequence with per-step timing control
+# Send a key with custom delay (wait 800ms after key press)
+vwctl -w "Remote Desktop" key f -m alt -d 800
+
+# Send a key sequence with per-step timing control (delay_ms in ms)
 vwctl -w "Remote Desktop" keys '[{"key":"tab"},{"key":"enter","delay_ms":500}]'
 
 # Click at coordinates relative to window
@@ -74,8 +77,8 @@ vwctl -w "Command Prompt" -n type "dir{enter}"
 |---------|-------------|
 | `list-windows` | List all visible windows with hwnd and title |
 | `type [TEXT] [-f FILE]` | Type text with inline `{tag}` support (reads from stdin if omitted; `-f` to read from file, `-f -` for explicit stdin) |
-| `key KEY [-m MOD]` | Send a single key press with optional modifiers |
-| `keys JSON` | Send a key sequence from JSON array (per-step modifiers and delays) |
+| `key KEY [-m MOD] [-d MS]` | Send a single key press with optional modifiers and delay |
+| `keys JSON` | Send a key sequence from JSON array (per-step `key`, `modifiers`, `delay_ms`) |
 | `click X Y [-b]` | Click at position relative to window |
 | `move X Y [-r]` | Move mouse cursor (absolute or relative) |
 | `drag X1 Y1 X2 Y2` | Drag mouse from start to end position |
@@ -239,6 +242,35 @@ Aborted: target window lost focus (sent 2/5 key steps)
 ```
 
 This prevents keystrokes from being sent to an unintended window. Focus checking is disabled in no-focus mode (`-n` for CLI, `no_focus: true` for MCP).
+
+### Key Delay (`delay_ms`)
+
+After each key press, `vwctl` waits for a configurable delay before proceeding to the next action. This gives the target application time to process the keystroke (especially important for remote desktop apps, menus, and GUI transitions).
+
+**Default delays** (when `delay_ms` is not specified):
+
+| Context | Default delay |
+|---------|---------------|
+| `key` / `keys` commands (focus mode) | 600 ms |
+| `key` / `keys` commands (no-focus mode, `-n`) | 100 ms |
+| Inline `{tag}` in `type` command | 100 ms |
+| Plain text in `type` command | 20 ms (per character) |
+
+**Overriding the delay**:
+
+- **`keys` command** (CLI): set `delay_ms` per step in the JSON array.
+  ```bash
+  vwctl -H HWND keys '[{"key":"alt+f","delay_ms":800},{"key":"s","delay_ms":200}]'
+  ```
+- **`send_special_key` MCP tool**: set the `delay_ms` parameter directly.
+- **`send_key_sequence` MCP tool**: set `delay_ms` per step in the `steps` array.
+
+- **`key` command** (CLI): set `--delay`/`-d` in milliseconds.
+  ```bash
+  vwctl -H HWND key f -m alt -d 800
+  ```
+
+**When to adjust**: Increase the delay for slow UI transitions (e.g. menu opening, dialog loading). Decrease it for fast sequential keypresses where the default 600 ms is too slow.
 
 ## Limitations
 
