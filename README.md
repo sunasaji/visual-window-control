@@ -1,5 +1,7 @@
 # Visual Window Control
 
+[![PyPI](https://img.shields.io/pypi/v/visual-window-control)](https://pypi.org/project/visual-window-control/)
+
 MCP server & CLI for controlling windows visually — capture screenshots, extract text via OCR (Tesseract), and send keyboard/mouse input to any target window. Designed for remote desktop workflows (RDP, etc.) but works with any window.
 
 ## Requirements
