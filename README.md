@@ -20,6 +20,10 @@ choco install tesseract
 pip install -e .
 ```
 
+## For LLM Agents
+
+See [LLM.md](LLM.md) for a CLI reference designed for LLM agents — recommended workflow, command examples, and common patterns.
+
 ## Usage
 
 ### CLI (`vwctl`)
@@ -34,8 +38,8 @@ vwctl -w "Remote Desktop" ocr
 # Type text with inline tags
 vwctl -w "Remote Desktop" type "ls -la{enter}"
 
-# Type from stdin (pipe or streaming)
-echo "ls -la{enter}" | vwctl -w "Remote Desktop" type
+# Type from stdin (pipe or streaming, raw mode by default)
+printf "ls -la\n" | vwctl -w "Remote Desktop" type
 
 # Send a special key with modifiers
 vwctl -w "Remote Desktop" key c -m ctrl
@@ -211,8 +215,8 @@ When the text argument is omitted, `type` reads from stdin line by line. Use `--
 Stdin and file input **default to raw mode** (no tag interpretation), since the typical use case is piping file/program output. Use `-t`/`--tags` to enable tag interpretation for these sources.
 
 ```bash
-# Pipe from another command (raw by default)
-echo "ls -la" | vwctl -w "Remote Desktop" type
+# Pipe from another command (raw by default — \n is sent as Enter)
+printf "ls -la\n" | vwctl -w "Remote Desktop" type
 
 # Explicit stdin with "-f -"
 cat commands.txt | vwctl -w "Remote Desktop" type -f -
@@ -285,10 +289,6 @@ After each key press, `vwctl` waits for a configurable delay before proceeding t
 - Use monospace fonts (JetBrains Mono, Hack, Fira Code) at 24pt+
 - Use high-contrast terminal themes
 - Larger window sizes improve accuracy
-
-## For LLM Agents
-
-See [LLM.md](LLM.md) for a CLI reference designed for LLM agents — recommended workflow, command examples, and common patterns.
 
 ## Tested With
 
