@@ -1,6 +1,6 @@
 """Tests for WindowController._tokenize and _is_valid_tag."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 

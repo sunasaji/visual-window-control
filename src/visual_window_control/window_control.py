@@ -9,8 +9,10 @@ from typing import Literal
 
 import mss
 from PIL import Image
-from pynput.keyboard import Controller as KeyboardController, Key
-from pynput.mouse import Button, Controller as MouseController
+from pynput.keyboard import Controller as KeyboardController
+from pynput.keyboard import Key
+from pynput.mouse import Button
+from pynput.mouse import Controller as MouseController
 
 logger = logging.getLogger(__name__)
 
