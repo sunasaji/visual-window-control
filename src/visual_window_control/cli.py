@@ -115,8 +115,12 @@ def _set_window(args: argparse.Namespace) -> int:
     else:
         print("Error: -w/--window or -H/--hwnd is required for this command", file=sys.stderr)
         return 1
-    if result.startswith("No window found") or result.startswith("Multiple windows") or result.startswith("Error"):
+    if result.startswith("No window found") or result.startswith("Error"):
         print(result, file=sys.stderr)
+        return 1
+    if result.startswith("Multiple windows"):
+        print(result, file=sys.stderr)
+        print("Use -H/--hwnd to specify a window handle directly.", file=sys.stderr)
         return 1
     return 0
 

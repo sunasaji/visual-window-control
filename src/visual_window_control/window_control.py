@@ -200,7 +200,8 @@ class WindowController:
             return f"No window found matching '{title}'"
 
         if len(matches) > 1:
-            match_list = "\n".join(f"  - {w['title']}" for w in matches[:5])
+            lines = [f"  {w['hwnd']}  {w['title']}" for w in matches]
+            match_list = "\n".join(lines)
             return f"Multiple windows found:\n{match_list}\nPlease be more specific."
 
         self.target_hwnd = matches[0]["hwnd"]

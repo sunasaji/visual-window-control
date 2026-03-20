@@ -340,6 +340,10 @@ class TestSetTargetWindow:
         ])
         result = ctrl.set_target_window("Notepad")
         assert "Multiple windows" in result
+        assert "111" in result
+        assert "222" in result
+        assert "Notepad - file1.txt" in result
+        assert "Notepad - file2.txt" in result
         # target should NOT be set when ambiguous
         assert ctrl.target_hwnd is None
 

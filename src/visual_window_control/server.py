@@ -349,6 +349,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent | 
         elif name == "set_target_window":
             title = arguments["title"]
             result = ctrl.set_target_window(title)
+            if result.startswith("Multiple windows"):
+                result += "\nUse set_target_hwnd with a specific hwnd."
             return [TextContent(
                 type="text",
                 text=result,
