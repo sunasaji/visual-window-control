@@ -22,16 +22,39 @@ def ctrl():
         c.special_keys = {
             "enter": None, "return": None, "tab": None,
             "escape": None, "esc": None, "backspace": None,
-            "delete": None, "up": None, "down": None,
-            "left": None, "right": None, "home": None,
-            "end": None, "pageup": None, "pagedown": None,
-            "space": None,
+            "delete": None, "space": None,
+            "up": None, "down": None, "left": None, "right": None,
+            "home": None, "end": None,
+            "pageup": None, "pagedown": None,
+            "insert": None,
             "f1": None, "f2": None, "f3": None, "f4": None,
             "f5": None, "f6": None, "f7": None, "f8": None,
             "f9": None, "f10": None, "f11": None, "f12": None,
+            "f13": None, "f14": None, "f15": None, "f16": None,
+            "f17": None, "f18": None, "f19": None, "f20": None,
+            "f21": None, "f22": None, "f23": None, "f24": None,
+            "ctrl": None, "control": None,
+            "alt": None, "shift": None,
+            "win": None, "super": None,
+            "ctrl_l": None, "ctrl_r": None,
+            "alt_l": None, "alt_r": None, "alt_gr": None,
+            "shift_r": None, "win_r": None,
+            "caps_lock": None, "capslock": None,
+            "num_lock": None, "numlock": None,
+            "scroll_lock": None, "scrolllock": None,
+            "print_screen": None, "printscreen": None,
+            "pause": None, "menu": None,
+            "media_play_pause": None, "media_stop": None,
+            "media_volume_mute": None, "media_volume_down": None,
+            "media_volume_up": None,
+            "media_previous": None, "media_next": None,
         }
         c.modifier_keys = {
-            "ctrl": None, "control": None, "alt": None, "shift": None,
+            "ctrl": None, "control": None,
+            "ctrl_l": None, "ctrl_r": None,
+            "alt": None, "alt_l": None, "alt_r": None, "alt_gr": None,
+            "shift": None, "shift_r": None,
+            "win": None, "super": None, "win_r": None,
         }
         return c
 
@@ -60,9 +83,41 @@ class TestIsValidTag:
         assert ctrl._is_valid_tag("foo") is False
         assert ctrl._is_valid_tag("hello world") is False
 
-    def test_modifier_only_rejected(self, ctrl):
-        assert ctrl._is_valid_tag("ctrl") is False
+    def test_single_modifier_accepted(self, ctrl):
+        assert ctrl._is_valid_tag("ctrl") is True
+        assert ctrl._is_valid_tag("alt") is True
+        assert ctrl._is_valid_tag("shift") is True
+        assert ctrl._is_valid_tag("win") is True
+
+    def test_navigation_and_lock_keys(self, ctrl):
+        for key in ("insert", "pause", "menu", "print_screen",
+                    "caps_lock", "num_lock", "scroll_lock"):
+            assert ctrl._is_valid_tag(key) is True
+
+    def test_extended_function_keys(self, ctrl):
+        assert ctrl._is_valid_tag("f13") is True
+        assert ctrl._is_valid_tag("f24") is True
+
+    def test_media_keys(self, ctrl):
+        for key in ("media_play_pause", "media_volume_mute", "media_next"):
+            assert ctrl._is_valid_tag(key) is True
+
+    def test_left_right_modifier_variants(self, ctrl):
+        for key in ("ctrl_l", "ctrl_r", "alt_gr", "shift_r", "win_r"):
+            assert ctrl._is_valid_tag(key) is True
+
+    def test_left_right_modifier_in_combo(self, ctrl):
+        assert ctrl._is_valid_tag("ctrl_l+c") is True
+        assert ctrl._is_valid_tag("alt_gr+a") is True
+        assert ctrl._is_valid_tag("win_r+e") is True
+
+    def test_alias_keys(self, ctrl):
+        for key in ("capslock", "numlock", "scrolllock", "printscreen"):
+            assert ctrl._is_valid_tag(key) is True
+
+    def test_multiple_modifiers_only_rejected(self, ctrl):
         assert ctrl._is_valid_tag("ctrl+shift") is False
+        assert ctrl._is_valid_tag("ctrl+alt") is False
 
     def test_multiple_non_modifier_parts_rejected(self, ctrl):
         assert ctrl._is_valid_tag("enter+tab") is False
@@ -134,3 +189,21 @@ class TestTokenize:
     def test_alt_f4(self, ctrl):
         tokens = ctrl._tokenize("{alt+f4}")
         assert tokens == ["\x01alt+f4"]
+
+    def test_win_combo(self, ctrl):
+        tokens = ctrl._tokenize("{win+r}")
+        assert tokens == ["\x01win+r"]
+
+    def test_standalone_modifier(self, ctrl):
+        tokens = ctrl._tokenize("{alt}")
+        assert tokens == ["\x01alt"]
+
+    def test_new_keys_tokenized(self, ctrl):
+        tokens = ctrl._tokenize("{insert}{pause}{caps_lock}{media_next}")
+        assert tokens == [
+            "\x01insert", "\x01pause", "\x01caps_lock", "\x01media_next",
+        ]
+
+    def test_left_right_variant_combo(self, ctrl):
+        tokens = ctrl._tokenize("{alt_gr+a}")
+        assert tokens == ["\x01alt_gr+a"]

@@ -84,8 +84,9 @@ vwctl -H HWND keys '[{"key":"tab"},{"key":"enter","delay_ms":500}]'
 **Key delay (`delay_ms`)**: After each key press, `vwctl` waits before proceeding. Defaults: 600 ms in focus mode, 100 ms in no-focus mode (`-n`), 100 ms for inline `{tag}` in `type`. Override per step in `keys` JSON via `delay_ms` (milliseconds). Increase for slow UI transitions (menus, dialogs); decrease for fast sequential input.
 
 **Inline tags** (used in `type` command, tag mode):
-- Keys: `{enter}`, `{tab}`, `{escape}`, `{backspace}`, `{delete}`, `{up}`, `{down}`, `{left}`, `{right}`, `{home}`, `{end}`, `{pageup}`, `{pagedown}`, `{space}`, `{f1}`–`{f12}`
-- Modifiers: `{ctrl+c}`, `{alt+f4}`, `{shift+tab}`, `{ctrl+shift+a}`
+- Keys: `{enter}`, `{tab}`, `{escape}`, `{backspace}`, `{delete}`, `{space}`, `{up}`, `{down}`, `{left}`, `{right}`, `{home}`, `{end}`, `{pageup}`, `{pagedown}`, `{insert}`, `{f1}`–`{f24}`, `{print_screen}`, `{pause}`, `{menu}`, `{caps_lock}`, `{num_lock}`, `{scroll_lock}`, `{media_play_pause}`, `{media_stop}`, `{media_volume_mute}`, `{media_volume_down}`, `{media_volume_up}`, `{media_previous}`, `{media_next}`
+- Modifiers (also usable standalone): `{ctrl}`, `{alt}`, `{shift}`, `{win}`, `{ctrl_l}`, `{ctrl_r}`, `{alt_l}`, `{alt_r}`, `{alt_gr}`, `{shift_r}`, `{win_r}`
+- Modifier combos: `{ctrl+c}`, `{alt+f4}`, `{shift+tab}`, `{win+d}`, `{ctrl+shift+a}`
 - Escaping: `{{` → literal `{`, `}}` → literal `}`
 - Unrecognized `{content}` passes through as-is (safe for code with braces)
 

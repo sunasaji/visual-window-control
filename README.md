@@ -168,9 +168,11 @@ Text input supports `{tag}` syntax for special keys:
 
 **Whitelist-based**: Only recognized key names are interpreted as tags. Unknown `{content}` passes through literally, so code with curly braces (awk, Python, shell) works without escaping.
 
-**Supported keys**: `{enter}`, `{tab}`, `{escape}`, `{backspace}`, `{delete}`, `{up}`, `{down}`, `{left}`, `{right}`, `{home}`, `{end}`, `{pageup}`, `{pagedown}`, `{space}`, `{f1}`–`{f12}`
+**Supported keys**: `{enter}`, `{tab}`, `{escape}`, `{backspace}`, `{delete}`, `{space}`, `{up}`, `{down}`, `{left}`, `{right}`, `{home}`, `{end}`, `{pageup}`, `{pagedown}`, `{insert}`, `{f1}`–`{f24}`, `{print_screen}`, `{pause}`, `{menu}`, `{caps_lock}`, `{num_lock}`, `{scroll_lock}`, `{media_play_pause}`, `{media_stop}`, `{media_volume_mute}`, `{media_volume_down}`, `{media_volume_up}`, `{media_previous}`, `{media_next}`
 
-**Modifiers**: `{ctrl+c}`, `{alt+f4}`, `{shift+tab}`
+**Modifiers** (also usable standalone): `{ctrl}`, `{alt}`, `{shift}`, `{win}` — with left/right variants: `{ctrl_l}`, `{ctrl_r}`, `{alt_l}`, `{alt_r}`, `{alt_gr}`, `{shift_r}`, `{win_r}`
+
+**Modifier combos**: `{ctrl+c}`, `{alt+f4}`, `{shift+tab}`, `{win+d}`
 
 **Escaping**: `{{` → literal `{`, `}}` → literal `}`
 

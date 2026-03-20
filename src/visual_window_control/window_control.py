@@ -95,58 +95,114 @@ class WindowController:
 
         # Special key mapping
         self.special_keys = {
-            "enter": Key.enter,
-            "return": Key.enter,
+            # Common keys
+            "enter": Key.enter, "return": Key.enter,
             "tab": Key.tab,
-            "escape": Key.esc,
-            "esc": Key.esc,
+            "escape": Key.esc, "esc": Key.esc,
             "backspace": Key.backspace,
             "delete": Key.delete,
-            "up": Key.up,
-            "down": Key.down,
-            "left": Key.left,
-            "right": Key.right,
-            "home": Key.home,
-            "end": Key.end,
-            "pageup": Key.page_up,
-            "pagedown": Key.page_down,
             "space": Key.space,
-            "f1": Key.f1,
-            "f2": Key.f2,
-            "f3": Key.f3,
-            "f4": Key.f4,
-            "f5": Key.f5,
-            "f6": Key.f6,
-            "f7": Key.f7,
-            "f8": Key.f8,
-            "f9": Key.f9,
-            "f10": Key.f10,
-            "f11": Key.f11,
-            "f12": Key.f12,
+            # Arrow keys
+            "up": Key.up, "down": Key.down,
+            "left": Key.left, "right": Key.right,
+            # Navigation
+            "home": Key.home, "end": Key.end,
+            "pageup": Key.page_up, "pagedown": Key.page_down,
+            "insert": Key.insert,
+            # Function keys
+            "f1": Key.f1, "f2": Key.f2, "f3": Key.f3, "f4": Key.f4,
+            "f5": Key.f5, "f6": Key.f6, "f7": Key.f7, "f8": Key.f8,
+            "f9": Key.f9, "f10": Key.f10, "f11": Key.f11, "f12": Key.f12,
+            "f13": Key.f13, "f14": Key.f14, "f15": Key.f15, "f16": Key.f16,
+            "f17": Key.f17, "f18": Key.f18, "f19": Key.f19, "f20": Key.f20,
+            "f21": Key.f21, "f22": Key.f22, "f23": Key.f23, "f24": Key.f24,
+            # Modifier keys (usable standalone)
+            "ctrl": Key.ctrl, "control": Key.ctrl,
+            "alt": Key.alt,
+            "shift": Key.shift,
+            "win": Key.cmd, "super": Key.cmd,
+            # Left/right modifier variants
+            "ctrl_l": Key.ctrl_l, "ctrl_r": Key.ctrl_r,
+            "alt_l": Key.alt_l, "alt_r": Key.alt_r, "alt_gr": Key.alt_gr,
+            "shift_r": Key.shift_r,
+            "win_r": Key.cmd_r,
+            # Lock keys
+            "caps_lock": Key.caps_lock, "capslock": Key.caps_lock,
+            "num_lock": Key.num_lock, "numlock": Key.num_lock,
+            "scroll_lock": Key.scroll_lock, "scrolllock": Key.scroll_lock,
+            # System keys
+            "print_screen": Key.print_screen, "printscreen": Key.print_screen,
+            "pause": Key.pause,
+            "menu": Key.menu,
+            # Media keys
+            "media_play_pause": Key.media_play_pause,
+            "media_stop": Key.media_stop,
+            "media_volume_mute": Key.media_volume_mute,
+            "media_volume_down": Key.media_volume_down,
+            "media_volume_up": Key.media_volume_up,
+            "media_previous": Key.media_previous,
+            "media_next": Key.media_next,
         }
 
         self.modifier_keys = {
-            "ctrl": Key.ctrl,
-            "control": Key.ctrl,
+            "ctrl": Key.ctrl, "control": Key.ctrl,
+            "ctrl_l": Key.ctrl_l, "ctrl_r": Key.ctrl_r,
             "alt": Key.alt,
-            "shift": Key.shift,
+            "alt_l": Key.alt_l, "alt_r": Key.alt_r, "alt_gr": Key.alt_gr,
+            "shift": Key.shift, "shift_r": Key.shift_r,
+            "win": Key.cmd, "super": Key.cmd, "win_r": Key.cmd_r,
         }
 
         # Virtual key codes for PostMessage (no-focus mode)
         self._vk_map = {
+            # Common keys
             "enter": 0x0D, "return": 0x0D, "tab": 0x09,
             "escape": 0x1B, "esc": 0x1B, "backspace": 0x08,
-            "delete": 0x2E, "up": 0x26, "down": 0x28,
-            "left": 0x25, "right": 0x27, "home": 0x24,
-            "end": 0x23, "pageup": 0x21, "pagedown": 0x22,
-            "space": 0x20,
+            "delete": 0x2E, "space": 0x20,
+            # Arrow keys
+            "up": 0x26, "down": 0x28, "left": 0x25, "right": 0x27,
+            # Navigation
+            "home": 0x24, "end": 0x23,
+            "pageup": 0x21, "pagedown": 0x22,
+            "insert": 0x2D,
+            # Function keys
             "f1": 0x70, "f2": 0x71, "f3": 0x72, "f4": 0x73,
             "f5": 0x74, "f6": 0x75, "f7": 0x76, "f8": 0x77,
             "f9": 0x78, "f10": 0x79, "f11": 0x7A, "f12": 0x7B,
+            "f13": 0x7C, "f14": 0x7D, "f15": 0x7E, "f16": 0x7F,
+            "f17": 0x80, "f18": 0x81, "f19": 0x82, "f20": 0x83,
+            "f21": 0x84, "f22": 0x85, "f23": 0x86, "f24": 0x87,
+            # Modifier keys
+            "ctrl": 0x11, "control": 0x11,
+            "ctrl_l": 0xA2, "ctrl_r": 0xA3,
+            "alt": 0x12,
+            "alt_l": 0xA4, "alt_r": 0xA5, "alt_gr": 0xA5,
+            "shift": 0x10, "shift_r": 0xA1,
+            "win": 0x5B, "super": 0x5B, "win_r": 0x5C,
+            # Lock keys
+            "caps_lock": 0x14, "capslock": 0x14,
+            "num_lock": 0x90, "numlock": 0x90,
+            "scroll_lock": 0x91, "scrolllock": 0x91,
+            # System keys
+            "print_screen": 0x2C, "printscreen": 0x2C,
+            "pause": 0x13,
+            "menu": 0x5D,
+            # Media keys
+            "media_play_pause": 0xB3,
+            "media_stop": 0xB2,
+            "media_volume_mute": 0xAD,
+            "media_volume_down": 0xAE,
+            "media_volume_up": 0xAF,
+            "media_previous": 0xB1,
+            "media_next": 0xB0,
         }
         self._mod_vk_map = {
             "ctrl": 0x11, "control": 0x11,
-            "alt": 0x12, "shift": 0x10,
+            "ctrl_l": 0xA2, "ctrl_r": 0xA3,
+            "alt": 0x12,
+            "alt_l": 0xA4, "alt_r": 0xA5, "alt_gr": 0xA5,
+            "shift": 0x10, "shift_r": 0xA1,
+            "win": 0x5B, "super": 0x5B, "win_r": 0x5C,
         }
 
     def list_windows(self) -> list[dict]:
@@ -732,7 +788,9 @@ class WindowController:
                 # Multiple non-modifier parts → not a valid tag
                 return False
         if key_part is None:
-            return False
+            # Modifier-only tag (e.g. {alt}, {ctrl}, {shift}, {win})
+            # Valid only if exactly one modifier
+            return len(parts) == 1 and parts[0] in self.special_keys
         # Accept known special keys and single characters (for combos like ctrl+a)
         return key_part in self.special_keys or len(key_part) == 1
 
@@ -808,8 +866,12 @@ class WindowController:
                 key_part = part
 
         if key_part is None:
-            logger.error("No key found in tag: %s", tag)
-            return
+            if len(modifiers) == 1:
+                # Modifier-only tag (e.g. {alt}, {win}) — send as key
+                key_part = modifiers.pop()
+            else:
+                logger.error("No key found in tag: %s", tag)
+                return
 
         # Use a shorter default delay for inline tags (100ms vs 600ms)
         self.send_special_key(key_part, modifiers, delay_ms=100, no_focus=no_focus)
@@ -971,11 +1033,13 @@ class WindowController:
             logger.warning("Could not focus window, attempting to send key anyway")
 
         key_lower = key.lower()
-        if key_lower not in self.special_keys:
+        if key_lower in self.special_keys:
+            target_key = self.special_keys[key_lower]
+        elif len(key_lower) == 1:
+            target_key = key_lower
+        else:
             logger.error("Unknown special key: %s", key)
             return
-
-        target_key = self.special_keys[key_lower]
 
         # Press modifiers
         pressed_mods = []
