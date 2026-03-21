@@ -283,7 +283,15 @@ After each key press, `vwctl` waits for a configurable delay before proceeding t
 ## Limitations
 
 - **Focus stealing**: When sending input to the target window, focus is moved to that window by default. This is required for the input to be received by the target application.
-- **No-focus mode (`-n` / `--no-focus`)**: An option exists to send input via `PostMessage` without stealing focus, but this only works with certain native Windows applications (e.g. `cmd.exe`, Git Bash, PuTTY). **Remote desktop applications (RDP, Guacamole, VNC, etc.) do not support no-focus input** — they require the window to be focused and in the foreground to receive keyboard/mouse events.
+- **No-focus mode (`-n` / `--no-focus`)**: An option exists to send input via `PostMessage` without stealing focus, but key support varies by target application:
+
+  | Target application | Text | Common keys | F1–F24 | Lock/system keys | Media keys |
+  |---|---|---|---|---|---|
+  | **Native console** (cmd.exe, Git Bash/mintty, PuTTY) | OK | OK | OK | Sent (toggle depends on OS) | Sent (no effect) |
+  | **RDP/remote desktop** (mstsc, Windows Sandbox, VNC, Guacamole) | NG | NG | NG | NG | NG |
+
+  Common keys: enter, tab, escape, backspace, delete, arrows, home/end, pageup/pagedown, space, insert.
+  In focus mode, all keys work with all applications.
 - **Admin privileges**: When the target application runs as admin, the controlling process must also run as admin due to Windows UIPI restrictions.
 
 ## OCR Tips

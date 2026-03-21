@@ -128,9 +128,13 @@ Send input without stealing focus from the current foreground window.
 vwctl -w "Command Prompt" -n type "dir{enter}"
 ```
 
-- Works with: `cmd.exe`, Git Bash, PuTTY, and other native Windows console apps
-- Does NOT work with: Remote Desktop (RDP), browser-based apps (Guacamole, VNC web client), most GUI apps
+- Works with: `cmd.exe`, Git Bash/mintty, PuTTY, and other native Windows console apps
+  - Text, common keys (enter/tab/arrows/home/end/insert/delete/etc.), and F1–F24 all work
+  - Lock keys (caps_lock, etc.) send the VK code but OS-level toggle behavior varies
+  - Media keys send the VK code but have no effect (apps expect WM_APPCOMMAND)
+- Does NOT work with: Remote Desktop (RDP), Windows Sandbox, browser-based apps (Guacamole, VNC web client)
 - Combine with `-b` for fully background operation (no-focus input + background capture)
+- In focus mode, all keys work with all applications
 
 ## Common Patterns
 
