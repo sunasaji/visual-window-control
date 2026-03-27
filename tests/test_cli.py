@@ -2,7 +2,7 @@
 
 import argparse
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -12,10 +12,14 @@ with patch.dict("sys.modules", {
     "pynput.keyboard": MagicMock(),
     "pynput.mouse": MagicMock(),
     "mss": MagicMock(),
-    "pytesseract": MagicMock(),
+    "cellocr": MagicMock(),
 }):
     import visual_window_control.cli as _cli_mod
-    from visual_window_control.cli import _resolve, _load_config, build_parser, cmd_list_windows, cmd_type, cmd_key, cmd_keys, _get_jpeg_quality
+    from visual_window_control.cli import (_build_ocr_options,
+                                           _get_jpeg_quality, _load_config,
+                                           _resolve, build_parser, cmd_key,
+                                           cmd_keys, cmd_list_windows,
+                                           cmd_type)
     from visual_window_control.window_control import FocusLostError
 
 
@@ -582,3 +586,52 @@ class TestCmdKeys:
             rc = cmd_keys(self._make_args(steps))
         assert rc == 0
         assert ctrl.send_special_key.call_count == 2
+
+
+# ── _build_ocr_options ───────────────────────────────────────────────
+
+
+class TestBuildOcrOptions:
+    def test_empty_config(self):
+        assert _build_ocr_options({}) == ""
+
+    def test_toml_only(self):
+        config = {"ocr": {"options": "-d Consolas"}}
+        assert _build_ocr_options(config) == "-d Consolas"
+
+    def test_env_only(self):
+        with patch.dict(os.environ, {"VWCTL_OCR_OPTIONS": "-T 0.9"}):
+            assert _build_ocr_options({}) == "-T 0.9"
+
+    def test_cli_only(self):
+        assert _build_ocr_options({}, "-I 30") == "-I 30"
+
+    def test_merge_order(self):
+        config = {"ocr": {"options": "-d Consolas"}}
+        with patch.dict(os.environ, {"VWCTL_OCR_OPTIONS": "-T 0.9"}):
+            result = _build_ocr_options(config, "-I 30")
+        assert result == "-d Consolas -T 0.9 -I 30"
+
+    def test_cli_overrides_via_concatenation(self):
+        config = {"ocr": {"options": "-d OldFont"}}
+        result = _build_ocr_options(config, "-d NewFont")
+        # Both present; cellocr parser uses last-wins
+        assert "-d OldFont" in result
+        assert "-d NewFont" in result
+        assert result.index("-d OldFont") < result.index("-d NewFont")
+
+    def test_ocr_parser_args(self):
+        parser = build_parser()
+        args = parser.parse_args([
+            "-w", "Test", "ocr",
+            "-O", "-d Consolas -T 0.9",
+        ])
+        assert args.ocr_options == "-d Consolas -T 0.9"
+
+    def test_exec_parser_args(self):
+        parser = build_parser()
+        args = parser.parse_args([
+            "-w", "Test", "exec", "ls",
+            "-O", "-d Consolas",
+        ])
+        assert args.ocr_options == "-d Consolas"

@@ -11,21 +11,21 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import ImageContent, TextContent, Tool
 
-from .ocr import TerminalOCR
+from .ocr import OCREngine
 from .window_control import FocusLostError, WindowController
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Global instances
-ocr: TerminalOCR | None = None
+ocr: OCREngine | None = None
 controller: WindowController | None = None
 
 
-def get_ocr() -> TerminalOCR:
+def get_ocr() -> OCREngine:
     global ocr
     if ocr is None:
-        ocr = TerminalOCR()
+        ocr = OCREngine()
     return ocr
 
 

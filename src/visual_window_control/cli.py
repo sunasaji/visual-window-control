@@ -17,11 +17,11 @@ if sys.platform == "win32":
     if hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
-from .ocr import TerminalOCR
+from .ocr import OCREngine
 from .window_control import FocusLostError, WindowController
 
 _controller: WindowController | None = None
-_ocr: TerminalOCR | None = None
+_ocr: OCREngine | None = None
 _config: dict | None = None
 
 
@@ -93,12 +93,37 @@ def get_controller() -> WindowController:
     return _controller
 
 
-def get_ocr() -> TerminalOCR:
+def _build_ocr_options(config: dict, cli_ocr_options: str | None = None) -> str:
+    """Build an OCR options string by concatenating sources.
+
+    Sources (concatenated in order — later values override earlier ones
+    because cellocr's parser uses last-wins semantics):
+      1. ``[ocr] options`` in TOML config (string)
+      2. ``VWCTL_OCR_OPTIONS`` env var
+      3. ``-O`` / ``--ocr-options`` CLI argument
+    """
+    parts: list[str] = []
+
+    cfg_opts = config.get("ocr", {}).get("options", "")
+    if cfg_opts:
+        parts.append(str(cfg_opts))
+
+    env_opts = os.environ.get("VWCTL_OCR_OPTIONS", "")
+    if env_opts:
+        parts.append(env_opts)
+
+    if cli_ocr_options:
+        parts.append(cli_ocr_options)
+
+    return " ".join(parts)
+
+
+def get_ocr() -> OCREngine:
     global _ocr
     if _ocr is None:
         config = get_config()
-        ocr_cmd = _resolve("ocr_cmd", None, "VWCTL_OCR_CMD", config)
-        _ocr = TerminalOCR(tesseract_cmd=ocr_cmd)
+        options = _build_ocr_options(config)
+        _ocr = OCREngine(options=options or None)
     return _ocr
 
 
@@ -377,6 +402,26 @@ def cmd_capture(args: argparse.Namespace) -> int:
     return 0
 
 
+def _get_ocr_for_cmd(args: argparse.Namespace) -> OCREngine:
+    """Build an OCREngine honouring per-command CLI overrides."""
+    cli_ocr_options = getattr(args, "ocr_options", None)
+    if cli_ocr_options is not None:
+        config = get_config()
+        options = _build_ocr_options(config, cli_ocr_options)
+        return OCREngine(options=options or None)
+    return get_ocr()
+
+
+def _ocr_and_print(ocr_engine: OCREngine, image) -> int:
+    """Run OCR, print settings hint to stderr then text to stdout."""
+    result = ocr_engine.recognize(image)
+    if result is None:
+        return _error("Error: OCR failed")
+    print(f"hint: {result.settings_string()}", file=sys.stderr)
+    print(result.text)
+    return 0
+
+
 def cmd_ocr(args: argparse.Namespace) -> int:
     if rc := _set_window(args):
         return rc
@@ -385,9 +430,7 @@ def cmd_ocr(args: argparse.Namespace) -> int:
     if image is None:
         return _error("Error: Could not capture window")
 
-    text = get_ocr().extract_text(image)
-    print(text)
-    return 0
+    return _ocr_and_print(_get_ocr_for_cmd(args), image)
 
 
 def cmd_exec(args: argparse.Namespace) -> int:
@@ -411,9 +454,7 @@ def cmd_exec(args: argparse.Namespace) -> int:
     if image is None:
         return _error("Error: Could not capture window")
 
-    text = get_ocr().extract_text(image)
-    print(text)
-    return 0
+    return _ocr_and_print(_get_ocr_for_cmd(args), image)
 
 
 # ── Parser ────────────────────────────────────────────────────────────
@@ -511,12 +552,18 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("ocr", help="Capture window and extract text via OCR")
     p.add_argument("-b", "--background", action="store_true",
                    help="Use PrintWindow API (works when occluded, but may produce black images for hardware-accelerated apps)")
+    p.add_argument("-O", "--ocr-options", dest="ocr_options", default=None,
+                   help='cellocr options, e.g. "-d Consolas -T 0.9" '
+                        "(env: VWCTL_OCR_OPTIONS)")
     p.set_defaults(func=cmd_ocr)
 
     # exec
     p = sub.add_parser("exec", help="Type command, press Enter, wait, then OCR")
     p.add_argument("command", help="Command to execute")
     p.add_argument("-W", "--wait", type=float, default=1.0, help="Wait seconds (default: 1.0)")
+    p.add_argument("-O", "--ocr-options", dest="ocr_options", default=None,
+                   help='cellocr options, e.g. "-d Consolas -T 0.9" '
+                        "(env: VWCTL_OCR_OPTIONS)")
     p.set_defaults(func=cmd_exec)
 
     return parser

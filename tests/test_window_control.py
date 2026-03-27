@@ -1,6 +1,6 @@
 """Tests for WindowController: _make_lparam, send_keys branching, set_target_window."""
 
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -11,7 +11,8 @@ with patch.dict("sys.modules", {
     "pynput.mouse": MagicMock(),
     "mss": MagicMock(),
 }):
-    from visual_window_control.window_control import FocusLostError, WindowController
+    from visual_window_control.window_control import (FocusLostError,
+                                                      WindowController)
 
 
 def _make_ctrl(**overrides):

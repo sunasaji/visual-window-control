@@ -2,11 +2,11 @@
 
 import asyncio
 import json
-from unittest.mock import patch, MagicMock
-
-from visual_window_control.window_control import FocusLostError
+from unittest.mock import MagicMock, patch
 
 import pytest
+
+from visual_window_control.window_control import FocusLostError
 
 # Mock Windows-only and heavy modules before importing server
 with patch.dict("sys.modules", {
@@ -14,7 +14,7 @@ with patch.dict("sys.modules", {
     "pynput.keyboard": MagicMock(),
     "pynput.mouse": MagicMock(),
     "mss": MagicMock(),
-    "pytesseract": MagicMock(),
+    "cellocr": MagicMock(),
 }):
     from visual_window_control import server
 

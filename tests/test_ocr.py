@@ -1,91 +1,60 @@
-"""Tests for TerminalOCR preprocessing and postprocessing."""
+"""Tests for OCREngine (cellocr wrapper)."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-import pytest
 from PIL import Image
 
-# Mock pytesseract to avoid requiring Tesseract installation
-with patch.dict("sys.modules", {"pytesseract": MagicMock()}):
-    from visual_window_control.ocr import TerminalOCR
+# Mock cellocr to avoid requiring installation.
+with patch.dict("sys.modules", {"cellocr": MagicMock()}):
+    import visual_window_control.ocr as _ocr_mod
+    from visual_window_control.ocr import OCREngine
 
 
-@pytest.fixture
-def ocr():
-    with patch("visual_window_control.ocr.pytesseract"):
-        return TerminalOCR()
+class TestOCREngine:
+    def _make_engine(self):
+        """Create an OCREngine with the module-level mock CellOCR."""
+        return OCREngine()
 
+    def test_extract_text_calls_recognize(self):
+        engine = self._make_engine()
+        mock_cellocr = MagicMock()
+        mock_result = MagicMock()
+        mock_result.text = "hello world"
+        mock_cellocr.recognize.return_value = mock_result
+        engine._cellocr = mock_cellocr
 
-# ── _postprocess_text ─────────────────────────────────────────────────
+        img = Image.new("RGB", (100, 50))
+        text = engine.extract_text(img)
 
+        assert text == "hello world"
+        mock_cellocr.recognize.assert_called_once_with(img)
 
-class TestPostprocessText:
-    def test_strips_trailing_whitespace(self, ocr):
-        assert ocr._postprocess_text("hello   \nworld  ") == "hello\nworld"
+    def test_options_forwarded_to_from_options(self):
+        mock_cls = MagicMock()
+        orig = _ocr_mod.CellOCR
+        _ocr_mod.CellOCR = mock_cls
+        try:
+            OCREngine(options="-d Consolas -T 0.9")
+            mock_cls.from_options.assert_called_once_with("-d Consolas -T 0.9")
+        finally:
+            _ocr_mod.CellOCR = orig
 
-    def test_collapses_excessive_blank_lines(self, ocr):
-        text = "a\n\n\n\n\n\nb"
-        result = ocr._postprocess_text(text)
-        assert result == "a\n\n\nb"
+    def test_no_options_passes_none(self):
+        mock_cls = MagicMock()
+        orig = _ocr_mod.CellOCR
+        _ocr_mod.CellOCR = mock_cls
+        try:
+            OCREngine()
+            mock_cls.from_options.assert_called_once_with(None)
+        finally:
+            _ocr_mod.CellOCR = orig
 
-    def test_three_blank_lines_preserved(self, ocr):
-        text = "a\n\n\nb"
-        result = ocr._postprocess_text(text)
-        assert result == "a\n\n\nb"
+    def test_error_returns_error_string(self):
+        engine = self._make_engine()
+        mock_cellocr = MagicMock()
+        mock_cellocr.recognize.side_effect = RuntimeError("bad image")
+        engine._cellocr = mock_cellocr
 
-    def test_safe_correction_pipe_s(self, ocr):
-        result = ocr._postprocess_text("run |s command")
-        assert "ls" in result
-
-    def test_safe_correction_at_line_start(self, ocr):
-        result = ocr._postprocess_text("|s -la")
-        # The \n|s pattern requires a newline before it
-        # Direct line start without newline won't match
-        assert result == "|s -la"
-
-    def test_strips_outer_whitespace(self, ocr):
-        assert ocr._postprocess_text("  hello  ") == "hello"
-
-    def test_empty_string(self, ocr):
-        assert ocr._postprocess_text("") == ""
-
-
-# ── preprocess_image ──────────────────────────────────────────────────
-
-
-class TestPreprocessImage:
-    def test_dark_theme_inverted(self, ocr):
-        # Dark image (avg brightness < 128)
-        img = Image.new("RGB", (100, 50), color=(20, 20, 20))
-        result = ocr.preprocess_image(img)
-        # Should be upscaled 2x
-        assert result.size == (200, 100)
-        # After inversion + threshold, dark bg should become white (255)
-        pixels = list(result.getdata())
-        assert pixels[0] == 255  # Was dark, inverted, thresholded to white
-
-    def test_light_theme_not_inverted(self, ocr):
-        # Light image (avg brightness >= 128)
-        img = Image.new("RGB", (100, 50), color=(230, 230, 230))
-        result = ocr.preprocess_image(img)
-        assert result.size == (200, 100)
-        # Light pixels should stay white after threshold
-        pixels = list(result.getdata())
-        assert pixels[0] == 255
-
-    def test_output_is_grayscale(self, ocr):
-        img = Image.new("RGB", (50, 50), color=(128, 0, 255))
-        result = ocr.preprocess_image(img)
-        assert result.mode == "L"
-
-    def test_2x_upscale(self, ocr):
-        img = Image.new("RGB", (80, 60), color=(100, 100, 100))
-        result = ocr.preprocess_image(img)
-        assert result.size == (160, 120)
-
-    def test_binary_output(self, ocr):
-        # All pixels should be either 0 or 255 after thresholding
-        img = Image.new("RGB", (50, 50), color=(100, 150, 200))
-        result = ocr.preprocess_image(img)
-        unique_values = set(result.getdata())
-        assert unique_values <= {0, 255}
+        img = Image.new("RGB", (100, 50))
+        assert engine.recognize(img) is None
+        assert engine.extract_text(img) == "[OCR Error]"

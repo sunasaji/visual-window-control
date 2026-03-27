@@ -8,7 +8,7 @@ authors = [
     { name = "sunasaji" },
 ]
 readme = "README.md"
-keywords = ["mcp", "ocr", "window-control", "automation", "rdp", "tesseract", "remote-desktop"]
+keywords = ["mcp", "ocr", "window-control", "automation", "rdp", "cellocr", "remote-desktop"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -25,7 +25,7 @@ classifiers = [
 ]
 dependencies = [
     "mcp>=1.0.0",
-    "pytesseract>=0.3.10",
+    "cellocr>=0.1.0",
     "pillow>=10.0.0",
     "pynput>=1.7.6",
     "mss>=9.0.0",
