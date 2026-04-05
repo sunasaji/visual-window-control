@@ -436,8 +436,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub = parser.add_subparsers(dest="command", required=True)
 
-    # list-windows
-    p = sub.add_parser("list-windows", help="List all visible windows")
+    # list
+    p = sub.add_parser("list", help="List all visible windows")
     p.add_argument("--json", action="store_true", help="Output in JSON format")
     p.set_defaults(func=cmd_list_windows)
 

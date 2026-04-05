@@ -8,8 +8,8 @@
 
 ```bash
 # 1. List windows (plain text: "hwnd  title" per line)
-vwctl list-windows
-# or JSON: vwctl list-windows --json
+vwctl list
+# or JSON: vwctl list --json
 # → Ask the user: "Which window should I operate on?"
 
 # 2. Once confirmed, note the hwnd and use -H for all subsequent commands
@@ -27,7 +27,7 @@ Use `-w TITLE` only for quick one-off commands when you are certain the title is
 
 ## Window Targeting
 
-Every command except `list-windows` requires a target window.
+Every command except `list` requires a target window.
 
 | Option | Description |
 |--------|-------------|
@@ -36,7 +36,7 @@ Every command except `list-windows` requires a target window.
 
 ## Commands
 
-In the examples below, `HWND` is the window handle obtained from `list-windows`.
+In the examples below, `HWND` is the window handle obtained from `list`.
 
 ### Read the screen
 
