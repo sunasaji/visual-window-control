@@ -128,12 +128,12 @@ class TestBuildParser:
         return build_parser()
 
     def test_list_windows(self, parser):
-        args = parser.parse_args(["list-windows"])
-        assert args.command == "list-windows"
+        args = parser.parse_args(["list"])
+        assert args.command == "list"
         assert args.json is False
 
     def test_list_windows_json_flag(self, parser):
-        args = parser.parse_args(["list-windows", "--json"])
+        args = parser.parse_args(["list", "--json"])
         assert args.json is True
 
     def test_type_command(self, parser):

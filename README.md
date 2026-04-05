@@ -30,7 +30,7 @@ See [LLM.md](LLM.md) for a CLI reference designed for LLM agents — recommended
 
 ```bash
 # List all visible windows
-vwctl list-windows
+vwctl list
 
 # Capture and OCR a window (by title)
 vwctl -w "Remote Desktop" ocr
@@ -81,7 +81,7 @@ vwctl -w "Command Prompt" -n type "dir{enter}"
 
 | Command | Description |
 |---------|-------------|
-| `list-windows` | List all visible windows with hwnd and title |
+| `list` | List all visible windows with hwnd and title |
 | `type [TEXT] [-f FILE]` | Type text with inline `{tag}` support (reads from stdin if omitted; `-f` to read from file, `-f -` for explicit stdin) |
 | `key KEY [-m MOD] [-d MS]` | Send a single key press with optional modifiers and delay |
 | `keys JSON` | Send a key sequence from JSON array (per-step `key`, `modifiers`, `delay_ms`) |
